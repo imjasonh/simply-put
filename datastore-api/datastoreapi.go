@@ -1,6 +1,5 @@
 package datastoreapi
 
-// TODO: Support other request/response formats besides JSON (e.g., xml, gob)
 // TODO: Figure out if PropertyList can support nested objects, or fail if they are detected.
 // TODO: Add rudimentary single-property queries, pagination, sorting, etc.
 
