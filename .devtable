@@ -1,0 +1,12 @@
+profile = DevTable.Profile(
+  Analyze = [],
+  Build = [],
+  Debug = [],
+  Deploy = [appengine_prod]
+)
+
+appengine_prod = Google.AppEngine(
+  Files = ProjectFiles(),
+  AuthorizationProfile = 'AppEngine',
+  Title = 'Prod Version'
+)
