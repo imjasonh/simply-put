@@ -8,6 +8,7 @@ package datastoreapi
 import (
 	"appengine"
 	"appengine/datastore"
+	"appengine/urlfetch"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -33,11 +34,42 @@ type UserQuery struct {
 	Cursor                             string
 }
 
+type UserInfo struct {
+	Id string
+}
+
+func getUserId(accessToken string, client http.Client) (string, error) {
+	resp, err := client.Get("https://www.googleapis.com/oauth2/v1/userinfo?access_token=" + accessToken)
+	if err != nil {
+		return "", err
+	}
+	var info UserInfo
+	if err := json.NewDecoder(resp.Body).Decode(&info); err != nil {
+		return "", err
+	}
+	return info.Id, nil
+}
+
 // datastoreApi dispatches requests to the relevant API method and arranges certain common state
 func datastoreApi(w http.ResponseWriter, r *http.Request) {
+	c := appengine.NewContext(r)
 	w.Header().Add("Access-Control-Allow-Origin", "*")
 
-	c := appengine.NewContext(r)
+	r.ParseForm()
+	client := urlfetch.Client(c)
+
+	// Get the access_token from the request and turn it into a user ID with which we will namespace Kinds in the datastore.
+	accessToken := r.Form.Get("access_token")
+	if accessToken == "" {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+	_ /*userId*/, err := getUserId(accessToken, *client)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	if r.URL.Path == "/datastore/v1dev/objects" {
 		switch r.Method {
 		case "POST":
