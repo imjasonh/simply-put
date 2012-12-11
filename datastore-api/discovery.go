@@ -8,6 +8,9 @@ func init() {
 	http.HandleFunc("/discovery/v1/apis/datastore/v1dev/rest", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(discovery))
 	})
+	http.HandleFunc("/discovery/v1/apis", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(directory))
+	})
 }
 
 const discovery = `
@@ -191,5 +194,24 @@ const discovery = `
             }
         }
     }
-}
-`
+}`
+
+const directory = `
+{
+    "kind": "discovery#directoryList",
+    "discoveryVersion": "v1",
+    "items": [
+        {
+            "kind": "discovery#directoryItem",
+            "id": "datastore:v1dev",
+            "name": "datastore",
+            "version": "v1dev",
+            "title": "Datastore API",
+            "description": "Simple REST access to the App Engine Datastore.",
+            "discoveryRestUrl": "https://datastore-api.appspot.com/discovery/v1/apis/datastore/v1dev/rest",
+            "discoveryLink": "./apis/datastore/v1dev/rest",
+            "documentationLink": "https://www.github.com/ImJasonH/datastore-api",
+            "preferred": true
+        }
+    ]
+}`
