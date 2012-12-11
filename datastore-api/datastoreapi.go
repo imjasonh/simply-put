@@ -24,7 +24,6 @@ const (
 )
 
 func init() {
-	http.HandleFunc("/datastore/v1dev/objects", datastoreApi)
 	http.HandleFunc("/datastore/v1dev/objects/", datastoreApi)
 }
 
@@ -38,16 +37,31 @@ type UserInfo struct {
 	Id string
 }
 
-func getUserId(accessToken string, client http.Client) (string, error) {
+func getUserId(accessToken string, client http.Client) (id string, err error) {
 	resp, err := client.Get("https://www.googleapis.com/oauth2/v1/userinfo?access_token=" + accessToken)
 	if err != nil {
-		return "", err
+		return
 	}
 	var info UserInfo
-	if err := json.NewDecoder(resp.Body).Decode(&info); err != nil {
-		return "", err
+	if err = json.NewDecoder(resp.Body).Decode(&info); err != nil {
+		return
 	}
-	return info.Id, nil
+    id = info.Id
+    return
+}
+
+func getKind(path string) string {
+	return path[len("/datastore/v1dev/objects/"):]
+}
+
+func getKindAndId(path string) (kind string, id int64, err error) {
+    kind = path[len("/datastore/v1dev/objects/"):strings.LastIndex(path, "/")]
+	idStr := path[strings.LastIndex(path, "/")+1:]
+	id, err = strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		return
+	}
+	return
 }
 
 // datastoreApi dispatches requests to the relevant API method and arranges certain common state
