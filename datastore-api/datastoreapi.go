@@ -21,7 +21,6 @@ import (
 const (
 	idKey        = "_id"
 	createdKey   = "_created"
-	kindKey      = "_kind"
 	updatedKey   = "_updated"
 	defaultLimit = 10
 )
@@ -161,7 +160,6 @@ func get(w http.ResponseWriter, kind string, id int64, c appengine.Context) {
 	}
 	m := plistToMap(plist, k)
 	m[idKey] = k.IntID()
-	m[kindKey] = kind
 	json.NewEncoder(w).Encode(m)
 }
 
@@ -182,7 +180,6 @@ func insert(w http.ResponseWriter, kind string, r io.Reader, c appengine.Context
 		return
 	}
 	m[idKey] = k.IntID()
-	m[kindKey] = kind
 	json.NewEncoder(w).Encode(m)
 }
 
@@ -244,7 +241,6 @@ func list(w http.ResponseWriter, kind string, uq UserQuery, c appengine.Context)
 			return
 		}
 		m := plistToMap(plist, k)
-		m[kindKey] = kind
 		items = append(items, m)
 		if crs, err = t.Cursor(); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -274,6 +270,5 @@ func update(w http.ResponseWriter, kind string, id int64, r io.Reader, c appengi
 		return
 	}
 	m[idKey] = id
-	m[kindKey] = kind
 	json.NewEncoder(w).Encode(m)
 }

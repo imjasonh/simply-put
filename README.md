@@ -14,7 +14,6 @@ Create an object by sending a POST to `/<Kind>`
         {
             "_created": "2012-12-11T16:22:20.943202Z", 
             "_id": 1001, 
-            "_kind": "<<user_id>>--MyKindOfData", 
             "a": 1, 
             "b": false, 
             "c": [
@@ -30,7 +29,6 @@ Get an object by sending a GET to `/<Kind>/ID`
         {
             "_created": "2012-12-11T16:22:20.943202Z", 
             "_id": 1001, 
-            "_kind": "<<user_id>>--MyKindOfData", 
             "a": 1, 
             "b": false, 
             "c": [
@@ -49,7 +47,6 @@ Update an object by sending a POST to `/<Kind>/ID`
         {
             "_created": "2012-12-11T16:22:20.943202Z", 
             "_id": 1001, 
-            "_kind": "<<user_id>>--MyKindOfData", 
             "_updated": "2012-12-11T16:28:56.943202Z", 
             "a": 3, 
             "b": true, 
@@ -68,7 +65,6 @@ List objects by sending a GET to `/<Kind>` without the ID
                 {
                     "_created": "2012-12-11T16:21:08.322745Z", 
                     "_id": 1, 
-                    "_kind": "<<user_id>>--MyKindOfData", 
                     "a": 1, 
                     "b": false, 
                     "c": [
@@ -80,7 +76,6 @@ List objects by sending a GET to `/<Kind>` without the ID
                 {
                     "_created": "2012-12-11T16:22:20.943202Z", 
                     "_id": 1001, 
-                    "_kind": "<<user_id>>--MyKindOfData", 
                     "a": 1, 
                     "b": false, 
                     "c": [
@@ -98,3 +93,4 @@ Delete an object by sending a DELETE to `/<Kind>/ID`
 --------------------------------------------------
         $ curl https://datastore-api.appspot.com/datastore/v1dev/objects/MyKindOfData/1001?access_token=$ACCESS_TOKEN \
               -X DELETE
+        (There is no response in this case)

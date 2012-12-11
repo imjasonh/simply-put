@@ -48,10 +48,6 @@ const discovery = `
             "id": "DataObject",
             "type": "object",
             "properties": {
-                "_kind": {
-                    "type": "string",
-                    "description": "TODO"
-                },
                 "_id": {
                     "type": "string",
                     "description": "Unique ID of this object."
