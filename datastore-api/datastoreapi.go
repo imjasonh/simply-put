@@ -30,9 +30,9 @@ func init() {
 }
 
 type UserQuery struct {
-	Limit, Offset                      int
-	FilterKey, FilterType, FilterValue string
-	Cursor                             string
+	Limit, Offset int
+	FilterKey, FilterType, FilterValue,
+	StartCursor, EndCursor string
 }
 
 type UserInfo struct {
@@ -114,8 +114,8 @@ func datastoreApi(w http.ResponseWriter, r *http.Request) {
 			insert(w, dsKind, r.Body, c)
 			return
 		case "GET":
-			// TODO: Parse user request into UserQuery and pass to list method
-			list(w, dsKind, UserQuery{}, c)
+			uq := userQuery(r)
+			list(w, dsKind, uq, c)
 			return
 		}
 	} else {
@@ -133,6 +133,19 @@ func datastoreApi(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	http.Error(w, "Unsupported Method", http.StatusMethodNotAllowed)
+}
+
+func userQuery(r *http.Request) (uq UserQuery) {
+	uq.Limit, _ = strconv.Atoi(r.FormValue("limit"))
+	uq.Offset, _ = strconv.Atoi(r.FormValue("offset"))
+
+	uq.StartCursor = r.FormValue("start")
+	uq.EndCursor = r.FormValue("end")
+
+	// TODO: Support ?where=foo<bar queries (which may or may not be annoying to scope for users...)
+	_ = r.FormValue("where")
+
+	return
 }
 
 func delete(w http.ResponseWriter, kind string, id int64, c appengine.Context) {
@@ -224,10 +237,19 @@ func mapToPlist(m map[string]interface{}) datastore.PropertyList {
 }
 
 func list(w http.ResponseWriter, kind string, uq UserQuery, c appengine.Context) {
-	limit := 3
-	q := datastore.NewQuery(kind).Limit(limit)
+	q := datastore.NewQuery(kind)
 
-	items := make([]map[string]interface{}, 0, limit)
+	if uq.Limit != 0 {
+		q = q.Limit(uq.Limit)
+	}
+	if c, err := datastore.DecodeCursor(uq.StartCursor); err == nil {
+		q.Start(c)
+	}
+	if c, err := datastore.DecodeCursor(uq.EndCursor); err == nil {
+		q.End(c)
+	}
+
+	items := make([]map[string]interface{}, 0)
 
 	var crs datastore.Cursor
 	for t := q.Run(c); ; {
