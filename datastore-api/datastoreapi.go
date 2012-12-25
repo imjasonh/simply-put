@@ -197,8 +197,8 @@ func insert(w http.ResponseWriter, kind string, r io.Reader, c appengine.Context
 }
 
 // plistToMap transforms a PropertyList such as you would get from the datastore into a map[string]interface{} suitable for JSON-encoding.
-func plistToMap(plist datastore.PropertyList, k *datastore.Key) map[string]interface{} {
-	m := make(map[string]interface{})
+func plistToMap(plist datastore.PropertyList, k *datastore.Key) (m map[string]interface{}) {
+	m = make(map[string]interface{})
 	for _, p := range plist {
 		if _, exists := m[p.Name]; exists {
 			if _, isArr := m[p.Name].([]interface{}); isArr {
@@ -211,12 +211,12 @@ func plistToMap(plist datastore.PropertyList, k *datastore.Key) map[string]inter
 		}
 	}
 	m[idKey] = k.IntID()
-	return m
+	return
 }
 
 // mapToPlist transforms a map[string]interface{} such as you would get from decoding JSON into a PropertyList to store in the datastore.
-func mapToPlist(m map[string]interface{}) datastore.PropertyList {
-	plist := make(datastore.PropertyList, 0, len(m))
+func mapToPlist(m map[string]interface{}) (plist datastore.PropertyList) {
+	plist = make(datastore.PropertyList, 0, len(m))
 	for k, v := range m {
 		if _, mult := v.([]interface{}); mult {
 			for _, mv := range v.([]interface{}) {
@@ -233,7 +233,7 @@ func mapToPlist(m map[string]interface{}) datastore.PropertyList {
 			})
 		}
 	}
-	return plist
+	return
 }
 
 func list(w http.ResponseWriter, kind string, uq UserQuery, c appengine.Context) {
