@@ -7,7 +7,7 @@ You can do this using a client library, or for testing, by going to the OAuth Pl
 
 Create an object by sending a POST to `/<Kind>`
 -----------------------------------------------
-        $ curl https://datastore-api.appspot.com/datastore/v1dev/objects/MyKindOfData?access_token=$ACCESS_TOKEN \
+        $ curl https://simply-put.appspot.com/datastore/v1dev/objects/MyKindOfData?access_token=$ACCESS_TOKEN \
               -H "Content-Type: application/json" \
               -X POST \
               -d '{"a":1,"b":false,"c":["ho",1,true]}' | python -m json.tool
@@ -25,7 +25,7 @@ Create an object by sending a POST to `/<Kind>`
 
 Get an object by sending a GET to `/<Kind>/ID`
 ----------------------------------------------
-        $ curl https://datastore-api.appspot.com/datastore/v1dev/objects/MyKindOfData/1001?access_token=$ACCESS_TOKEN
+        $ curl https://simply-put.appspot.com/datastore/v1dev/objects/MyKindOfData/1001?access_token=$ACCESS_TOKEN
         {
             "_created": "2012-12-11T16:22:20.943202Z", 
             "_id": 1001, 
@@ -40,7 +40,7 @@ Get an object by sending a GET to `/<Kind>/ID`
 
 Update an object by sending a POST to `/<Kind>/ID`
 --------------------------------------------------
-        $ curl https://datastore-api.appspot.com/datastore/v1dev/objects/MyKindOfData/1001?access_token=$ACCESS_TOKEN \
+        $ curl https://simply-put.appspot.com/datastore/v1dev/objects/MyKindOfData/1001?access_token=$ACCESS_TOKEN \
               -H "Content-Type: application/json" \
               -X POST \
               -d '{"a":3,"b":true,"c":["ho",1,true]}' | python -m json.tool
@@ -59,7 +59,7 @@ Update an object by sending a POST to `/<Kind>/ID`
 
 List objects by sending a GET to `/<Kind>` without the ID
 ---------------------------------------------------------
-        $ curl https://datastore-api.appspot.com/datastore/v1dev/objects/MyKindOfData?access_token=$ACCESS_TOKEN | python -m json.tool
+        $ curl https://simply-put.appspot.com/datastore/v1dev/objects/MyKindOfData?access_token=$ACCESS_TOKEN | python -m json.tool
         {
             "items": [
                 {
@@ -91,6 +91,6 @@ List objects by sending a GET to `/<Kind>` without the ID
 
 Delete an object by sending a DELETE to `/<Kind>/ID`
 --------------------------------------------------
-        $ curl https://datastore-api.appspot.com/datastore/v1dev/objects/MyKindOfData/1001?access_token=$ACCESS_TOKEN \
+        $ curl https://simply-put.appspot.com/datastore/v1dev/objects/MyKindOfData/1001?access_token=$ACCESS_TOKEN \
               -X DELETE
         (There is no response in this case)
