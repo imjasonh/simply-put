@@ -1,7 +1,7 @@
 Simple REST JSON API for saving/updating/deleting data
 =====================================
 
-First of all, you will need to get an OAuth access token for the scope `https://www.googleapis.com/auth/userinfo`
+First of all, you will need to get an OAuth access token for the scope `https://www.googleapis.com/auth/userinfo.email`
 
 You can do this using a client library, or for testing, by going to the OAuth Playground: https://developers.google.com/oauthplayground/
 
