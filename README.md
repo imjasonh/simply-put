@@ -1,4 +1,4 @@
-REST API for the App Engine Datastore
+Simple REST JSON API for saving/updating/deleting data
 =====================================
 
 First of all, you will need to get an OAuth access token for the scope `https://www.googleapis.com/auth/userinfo`
