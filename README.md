@@ -1,4 +1,4 @@
-Simple REST JSON API for saving/updating/deleting data
+Simple REST JSON API for putting, getting, listing, updating and deleting data objects
 -----
 
 First of all, you will need to get an OAuth access token for the scope `https://www.googleapis.com/auth/userinfo.email`
