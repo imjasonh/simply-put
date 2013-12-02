@@ -1,7 +1,14 @@
-package datastoreapi
+package simplyput
 
-// TODO: Figure out if PropertyList can support nested objects, or fail if they are detected.
+// TODO: PropertyList can support nested objects with named properties like "A.B.C", support nested JSON objects.
 // TODO: Add rudimentary single-property queries, pagination, sorting, etc.
+// TODO: Add memcache
+// TODO: Support ETags, If-Modified-Since, etc. (http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html)
+// TODO: PUT requests
+// TODO: HEAD requests
+// TODO: PATCH requests/semantics
+// TODO: Batch requests (via multipart?)
+// TODO: User POSTs a JSON schema, future requests are validated against that schema. Would anybody use that?
 
 import (
 	"appengine"
@@ -35,25 +42,24 @@ type userQuery struct {
 	StartCursor, EndCursor string
 }
 
-type userInfo struct {
-	ID string
-}
-
 // getUserID gets the Google User ID for an access token.
-func getUserID(accessToken string, client http.Client) (id string, err error) {
+func getUserID(accessToken string, client http.Client) (string, error) {
 	resp, err := client.Get("https://www.googleapis.com/oauth2/v1/userinfo?access_token=" + accessToken)
 	if err != nil {
-		return
+		return "", err
 	}
-	var info userInfo
+	var info struct {
+		ID string
+	}
 	if err = json.NewDecoder(resp.Body).Decode(&info); err != nil {
-		return
+		return "", err
 	}
-	id = info.ID
+	resp.Body.Close()
+	id := info.ID
 	if id == "" {
-		err = errors.New("invalid auth")
+		return "", errors.New("invalid auth")
 	}
-	return
+	return id, nil
 }
 
 // getKindAndID parses the kind and ID from a request path.
@@ -89,7 +95,7 @@ func handle(w http.ResponseWriter, r *http.Request) {
 	// Get the access_token from the request and turn it into a user ID with which we will namespace Kinds in the datastore.
 	accessToken := r.Form.Get("access_token")
 	if accessToken == "" {
-		h := r.Header().Get("Authorization")
+		h := r.Header.Get("Authorization")
 		if strings.HasPrefix(h, "Bearer ") {
 			accessToken = h[len("Bearer "):]
 		}
@@ -112,13 +118,15 @@ func handle(w http.ResponseWriter, r *http.Request) {
 
 	dsKind := fmt.Sprintf("%s--%s", userID, kind)
 
+	resp := make(map[string]interface{}, 0)
+	errCode := http.StatusOK
 	if id == int64(0) {
 		switch r.Method {
 		case "POST":
-			insert(w, dsKind, r.Body, c)
+			resp, errCode = insert(c, dsKind, r.Body)
+			r.Body.Close()
 		case "GET":
-			uq := userQuery(r)
-			list(w, dsKind, uq, c)
+			resp, errCode = list(c, dsKind, newUserQuery(r))
 		default:
 			http.Error(w, "Unsupported Method", http.StatusMethodNotAllowed)
 			return
@@ -126,21 +134,30 @@ func handle(w http.ResponseWriter, r *http.Request) {
 	} else {
 		switch r.Method {
 		case "GET":
-			get(w, dsKind, id, c)
+			resp, errCode = get(c, dsKind, id)
 		case "DELETE":
-			delete(w, dsKind, id, c)
+			errCode = delete(c, dsKind, id)
 		case "POST":
 			// This is strictly "replace all properties/values", not "add new properties, update existing"
-			update(w, dsKind, id, r.Body, c)
+			resp, errCode = update(c, dsKind, id, r.Body)
+			r.Body.Close()
 		default:
 			http.Error(w, "Unsupported Method", http.StatusMethodNotAllowed)
 			return
 		}
 	}
+	if errCode != http.StatusOK {
+		http.Error(w, "", errCode)
+		return
+	}
+	if err := json.NewEncoder(w).Encode(&resp); err != nil {
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
 	w.Header().Add("Content-Type", "application/json")
 }
 
-func userQuery(r *http.Request) userQuery {
+func newUserQuery(r *http.Request) userQuery {
 	uq := userQuery{
 		StartCursor: r.FormValue("start"),
 		EndCursor:   r.FormValue("end"),
@@ -154,39 +171,39 @@ func userQuery(r *http.Request) userQuery {
 	return uq
 }
 
-func delete(w http.ResponseWriter, kind string, id int64, c appengine.Context) {
+func delete(c appengine.Context, kind string, id int64) int {
 	k := datastore.NewKey(c, kind, "", id, nil)
 	if err := datastore.Delete(c, k); err != nil {
 		if err == datastore.ErrNoSuchEntity {
-			http.Error(w, "Not Found", http.StatusNotFound)
+			return http.StatusNotFound
 		} else {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			c.Errorf("%v", err)
+			return http.StatusInternalServerError
 		}
-		return
 	}
+	return http.StatusOK
 }
 
-func get(w http.ResponseWriter, kind string, id int64, c appengine.Context) {
+func get(c appengine.Context, kind string, id int64) (map[string]interface{}, int) {
 	k := datastore.NewKey(c, kind, "", id, nil)
 	var plist datastore.PropertyList
 	if err := datastore.Get(c, k, &plist); err != nil {
 		if err == datastore.ErrNoSuchEntity {
-			http.Error(w, "Not Found", http.StatusNotFound)
-		} else {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return nil, http.StatusNotFound
 		}
-		return
+		c.Errorf("%v", err)
+		return nil, http.StatusInternalServerError
 	}
 	m := plistToMap(plist, k)
 	m[idKey] = k.IntID()
-	json.NewEncoder(w).Encode(m)
+	return m, http.StatusOK
 }
 
-func insert(w http.ResponseWriter, kind string, r io.Reader, c appengine.Context) {
+func insert(c appengine.Context, kind string, r io.Reader) (map[string]interface{}, int) {
 	var m map[string]interface{}
 	if err := json.NewDecoder(r).Decode(&m); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		c.Errorf("%v", err)
+		return nil, http.StatusInternalServerError
 	}
 	m[createdKey] = time.Now()
 
@@ -195,11 +212,11 @@ func insert(w http.ResponseWriter, kind string, r io.Reader, c appengine.Context
 	k := datastore.NewIncompleteKey(c, kind, nil)
 	k, err := datastore.Put(c, k, &plist)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		c.Errorf("%v", err)
+		return nil, http.StatusInternalServerError
 	}
 	m[idKey] = k.IntID()
-	json.NewEncoder(w).Encode(m)
+	return m, http.StatusOK
 }
 
 // plistToMap transforms a PropertyList such as you would get from the datastore into a map[string]interface{} suitable for JSON-encoding.
@@ -242,7 +259,7 @@ func mapToPlist(m map[string]interface{}) datastore.PropertyList {
 	return plist
 }
 
-func list(w http.ResponseWriter, kind string, uq userQuery, c appengine.Context) {
+func list(c appengine.Context, kind string, uq userQuery) (map[string]interface{}, int) {
 	q := datastore.NewQuery(kind)
 
 	if uq.Limit != 0 {
@@ -265,28 +282,28 @@ func list(w http.ResponseWriter, kind string, uq userQuery, c appengine.Context)
 			break
 		}
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
+			c.Errorf("%v", err)
+			return nil, http.StatusInternalServerError
 		}
 		m := plistToMap(plist, k)
 		items = append(items, m)
 		if crs, err = t.Cursor(); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
+			c.Errorf("%v", err)
+			return nil, http.StatusInternalServerError
 		}
 	}
 	r := map[string]interface{}{
 		"items":          items,
 		"nextStartToken": crs.String(),
 	}
-	json.NewEncoder(w).Encode(r)
+	return r, http.StatusOK
 }
 
-func update(w http.ResponseWriter, kind string, id int64, r io.Reader, c appengine.Context) {
+func update(c appengine.Context, kind string, id int64, r io.Reader) (map[string]interface{}, int) {
 	var m map[string]interface{}
 	if err := json.NewDecoder(r).Decode(&m); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		c.Errorf("%v", err)
+		return nil, http.StatusInternalServerError
 	}
 	m[updatedKey] = time.Now()
 
@@ -294,9 +311,9 @@ func update(w http.ResponseWriter, kind string, id int64, r io.Reader, c appengi
 
 	k := datastore.NewKey(c, kind, "", id, nil)
 	if _, err := datastore.Put(c, k, &plist); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		c.Errorf("%v", err)
+		return nil, http.StatusInternalServerError
 	}
 	m[idKey] = id
-	json.NewEncoder(w).Encode(m)
+	return m, http.StatusOK
 }
