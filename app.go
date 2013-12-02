@@ -82,13 +82,18 @@ func getKindAndID(path string) (string, int64, error) {
 func handle(w http.ResponseWriter, r *http.Request) {
 	c := appengine.NewContext(r)
 	w.Header().Add("Access-Control-Allow-Origin", "*")
-	w.Header().Add("Content-Type", "application/json")
 
 	r.ParseForm()
 	client := urlfetch.Client(c)
 
 	// Get the access_token from the request and turn it into a user ID with which we will namespace Kinds in the datastore.
 	accessToken := r.Form.Get("access_token")
+	if accessToken == "" {
+		h := r.Header().Get("Authorization")
+		if strings.HasPrefix(h, "Bearer ") {
+			accessToken = h[len("Bearer "):]
+		}
+	}
 	if accessToken == "" {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -111,27 +116,28 @@ func handle(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case "POST":
 			insert(w, dsKind, r.Body, c)
-			return
 		case "GET":
 			uq := userQuery(r)
 			list(w, dsKind, uq, c)
+		default:
+			http.Error(w, "Unsupported Method", http.StatusMethodNotAllowed)
 			return
 		}
 	} else {
 		switch r.Method {
 		case "GET":
 			get(w, dsKind, id, c)
-			return
 		case "DELETE":
 			delete(w, dsKind, id, c)
-			return
 		case "POST":
 			// This is strictly "replace all properties/values", not "add new properties, update existing"
 			update(w, dsKind, id, r.Body, c)
+		default:
+			http.Error(w, "Unsupported Method", http.StatusMethodNotAllowed)
 			return
 		}
 	}
-	http.Error(w, "Unsupported Method", http.StatusMethodNotAllowed)
+	w.Header().Add("Content-Type", "application/json")
 }
 
 func userQuery(r *http.Request) userQuery {
