@@ -205,7 +205,7 @@ func insert(c appengine.Context, kind string, r io.Reader) (map[string]interface
 		c.Errorf("%v", err)
 		return nil, http.StatusInternalServerError
 	}
-	m[createdKey] = time.Now()
+	m[createdKey] = time.Now().Unix()
 
 	plist := mapToPlist(m)
 
@@ -305,7 +305,7 @@ func update(c appengine.Context, kind string, id int64, r io.Reader) (map[string
 		c.Errorf("%v", err)
 		return nil, http.StatusInternalServerError
 	}
-	m[updatedKey] = time.Now()
+	m[updatedKey] = time.Now().Unix()
 
 	plist := mapToPlist(m)
 

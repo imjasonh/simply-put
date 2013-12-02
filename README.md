@@ -12,13 +12,13 @@ You can do this using a client library, or for testing, by going to the OAuth Pl
               -X POST \
               -d '{"a":1,"b":false,"c":["ho",1,true]}' | python -m json.tool
         {
-            "_created": "2012-12-11T16:22:20.943202Z", 
-            "_id": 1001, 
-            "a": 1, 
-            "b": false, 
+            "_created": 1386021382,
+            "_id": 1001,
+            "a": 1,
+            "b": false,
             "c": [
-                "ho", 
-                1, 
+                "ho",
+                1,
                 true
             ]
         }
@@ -27,13 +27,13 @@ You can do this using a client library, or for testing, by going to the OAuth Pl
 
         $ curl https://simply-put.appspot.com/datastore/v1dev/objects/MyKindOfData/1001?access_token=$ACCESS_TOKEN
         {
-            "_created": "2012-12-11T16:22:20.943202Z", 
-            "_id": 1001, 
-            "a": 1, 
-            "b": false, 
+            "_created": 1386021382,
+            "_id": 1001,
+            "a": 1,
+            "b": false,
             "c": [
-                "ho", 
-                1, 
+                "ho",
+                1,
                 true
             ]
         }
@@ -45,14 +45,14 @@ You can do this using a client library, or for testing, by going to the OAuth Pl
               -X POST \
               -d '{"a":3,"b":true,"c":["ho",1,true]}' | python -m json.tool
         {
-            "_created": "2012-12-11T16:22:20.943202Z", 
-            "_id": 1001, 
-            "_updated": "2012-12-11T16:28:56.943202Z", 
-            "a": 3, 
-            "b": true, 
+            "_created": 1386021382,
+            "_id": 1001,
+            "_updated": 1386021425,
+            "a": 3,
+            "b": true,
             "c": [
-                "ho", 
-                1, 
+                "ho",
+                1,
                 true
             ]
         }
@@ -63,28 +63,28 @@ You can do this using a client library, or for testing, by going to the OAuth Pl
         {
             "items": [
                 {
-                    "_created": "2012-12-11T16:21:08.322745Z", 
-                    "_id": 1, 
-                    "a": 1, 
-                    "b": false, 
+                    "_created": 1386021382,
+                    "_id": 1,
+                    "a": 1,
+                    "b": false,
                     "c": [
-                        "ho", 
-                        1, 
+                        "ho",
+                        1,
                         true
                     ]
-                }, 
+                },
                 {
-                    "_created": "2012-12-11T16:22:20.943202Z", 
-                    "_id": 1001, 
-                    "a": 1, 
-                    "b": false, 
+                    "_created": 1386021382,
+                    "_id": 1001,
+                    "a": 1,
+                    "b": false,
                     "c": [
-                        "ho", 
-                        1, 
+                        "ho",
+                        1,
                         true
                     ]
                 }
-            ], 
+            ],
             "nextStartToken": "<<next_page_token>>"
         }
 
