@@ -29,13 +29,13 @@ func init() {
 	http.HandleFunc("/datastore/v1dev/objects/", datastoreAPI)
 }
 
-type UserQuery struct {
+type userQuery struct {
 	Limit, Offset int
 	FilterKey, FilterType, FilterValue,
 	StartCursor, EndCursor string
 }
 
-type UserInfo struct {
+type userInfo struct {
 	ID string
 }
 
@@ -45,13 +45,13 @@ func getUserID(accessToken string, client http.Client) (id string, err error) {
 	if err != nil {
 		return
 	}
-	var info UserInfo
+	var info userInfo
 	if err = json.NewDecoder(resp.Body).Decode(&info); err != nil {
 		return
 	}
 	id = info.ID
 	if id == "" {
-		err = errors.New("Invalid auth")
+		err = errors.New("invalid auth")
 	}
 	return
 }
@@ -75,7 +75,7 @@ func getKindAndID(path string) (string, int64, error) {
 		kind := path[len("/datastore/v1dev/objects/"):]
 		return kind, int64(0), nil
 	}
-	return "", int64(0), errors.New("Invalid path")
+	return "", int64(0), errors.New("invalid path")
 }
 
 // datastoreAPI dispatches requests to the relevant API method and arranges certain common state
@@ -133,8 +133,8 @@ func datastoreAPI(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, "Unsupported Method", http.StatusMethodNotAllowed)
 }
 
-func userQuery(r *http.Request) UserQuery {
-	uq := UserQuery{
+func userQuery(r *http.Request) userQuery {
+	uq := userQuery{
 		StartCursor: r.FormValue("start"),
 		EndCursor: r.FormValue("end"),
 	}
@@ -235,7 +235,7 @@ func mapToPlist(m map[string]interface{}) datastore.PropertyList {
 	return plist
 }
 
-func list(w http.ResponseWriter, kind string, uq UserQuery, c appengine.Context) {
+func list(w http.ResponseWriter, kind string, uq userQuery, c appengine.Context) {
 	q := datastore.NewQuery(kind)
 
 	if uq.Limit != 0 {
