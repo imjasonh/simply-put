@@ -136,7 +136,7 @@ func datastoreAPI(w http.ResponseWriter, r *http.Request) {
 func userQuery(r *http.Request) userQuery {
 	uq := userQuery{
 		StartCursor: r.FormValue("start"),
-		EndCursor: r.FormValue("end"),
+		EndCursor:   r.FormValue("end"),
 	}
 	// TODO: MustParse for limit/offset, else panic
 	uq.Limit, _ = strconv.Atoi(r.FormValue("limit"))
