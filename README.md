@@ -1,12 +1,12 @@
 Simple REST JSON API for saving/updating/deleting data
-=====================================
+-----
 
 First of all, you will need to get an OAuth access token for the scope `https://www.googleapis.com/auth/userinfo.email`
 
 You can do this using a client library, or for testing, by going to the OAuth Playground: https://developers.google.com/oauthplayground/
 
-Create an object by sending a POST to `/<Kind>`
------------------------------------------------
+**Create an object by sending a POST to `/<Kind>`**
+
         $ curl https://simply-put.appspot.com/datastore/v1dev/objects/MyKindOfData?access_token=$ACCESS_TOKEN \
               -H "Content-Type: application/json" \
               -X POST \
@@ -23,8 +23,8 @@ Create an object by sending a POST to `/<Kind>`
             ]
         }
 
-Get an object by sending a GET to `/<Kind>/ID`
-----------------------------------------------
+**Get an object by sending a GET to `/<Kind>/ID`**
+
         $ curl https://simply-put.appspot.com/datastore/v1dev/objects/MyKindOfData/1001?access_token=$ACCESS_TOKEN
         {
             "_created": "2012-12-11T16:22:20.943202Z", 
@@ -38,8 +38,8 @@ Get an object by sending a GET to `/<Kind>/ID`
             ]
         }
 
-Update an object by sending a POST to `/<Kind>/ID`
---------------------------------------------------
+**Update an object by sending a POST to `/<Kind>/ID`**
+
         $ curl https://simply-put.appspot.com/datastore/v1dev/objects/MyKindOfData/1001?access_token=$ACCESS_TOKEN \
               -H "Content-Type: application/json" \
               -X POST \
@@ -57,8 +57,8 @@ Update an object by sending a POST to `/<Kind>/ID`
             ]
         }
 
-List objects by sending a GET to `/<Kind>` without the ID
----------------------------------------------------------
+**List objects by sending a GET to `/<Kind>` without the ID**
+
         $ curl https://simply-put.appspot.com/datastore/v1dev/objects/MyKindOfData?access_token=$ACCESS_TOKEN | python -m json.tool
         {
             "items": [
@@ -89,8 +89,8 @@ List objects by sending a GET to `/<Kind>` without the ID
         }
 
 
-Delete an object by sending a DELETE to `/<Kind>/ID`
---------------------------------------------------
+**Delete an object by sending a DELETE to `/<Kind>/ID`**
+
         $ curl https://simply-put.appspot.com/datastore/v1dev/objects/MyKindOfData/1001?access_token=$ACCESS_TOKEN \
               -X DELETE
         (There is no response in this case)
