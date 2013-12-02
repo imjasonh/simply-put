@@ -26,7 +26,7 @@ const (
 )
 
 func init() {
-	http.HandleFunc("/datastore/v1dev/objects/", datastoreAPI)
+	http.HandleFunc("/datastore/v1dev/objects/", handle)
 }
 
 type userQuery struct {
@@ -78,10 +78,11 @@ func getKindAndID(path string) (string, int64, error) {
 	return "", int64(0), errors.New("invalid path")
 }
 
-// datastoreAPI dispatches requests to the relevant API method and arranges certain common state
-func datastoreAPI(w http.ResponseWriter, r *http.Request) {
+// handle dispatches requests to the relevant API method and arranges certain common state
+func handle(w http.ResponseWriter, r *http.Request) {
 	c := appengine.NewContext(r)
 	w.Header().Add("Access-Control-Allow-Origin", "*")
+	w.Header().Add("Content-Type", "application/json")
 
 	r.ParseForm()
 	client := urlfetch.Client(c)
