@@ -45,6 +45,39 @@ func TestThereAndBackAgain(t *testing.T) {
 			"foo": []interface{}{"a", 1, true},
 			"_id": id,
 		},
+	}, {
+		// Nested properties -> nested maps
+		[]prop{{
+			Name:  "a.b.c",
+			Value: true,
+		}},
+		map[string]interface{}{
+			"_id": id,
+			"a": map[string]interface{}{
+				"b": map[string]interface{}{
+					"c": true,
+				},
+			},
+		},
+	}, {
+		// Nested properties with a list at the leaf
+		[]prop{{
+			Name:     "a.b.c",
+			Value:    true,
+			Multiple: true,
+		}, {
+			Name:     "a.b.c",
+			Value:    1,
+			Multiple: true,
+		}},
+		map[string]interface{}{
+			"_id": id,
+			"a": map[string]interface{}{
+				"b": map[string]interface{}{
+					"c": []interface{}{true, 1},
+				},
+			},
+		},
 	}}
 	for _, c := range cases {
 		m := plistToMap(c.pl, id)
@@ -52,7 +85,7 @@ func TestThereAndBackAgain(t *testing.T) {
 			t.Error("plistToMap(%v, %d); got %v want %v", c.pl, id, c.m, m)
 		}
 
-		pl := mapToPlist(m)
+		pl := mapToPlist("", m)
 		if c.pl != pl {
 			t.Error("mapToPlist(%v); got %v want %v", m, pl, c.pl)
 		}

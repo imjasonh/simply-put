@@ -215,7 +215,7 @@ func insert(c appengine.Context, kind string, r io.Reader) (map[string]interface
 	}
 	m[createdKey] = time.Now().Unix()
 
-	pl := mapToPlist(m)
+	pl := mapToPlist("", m)
 
 	k := datastore.NewIncompleteKey(c, kind, nil)
 	k, err := datastore.Put(c, k, &pl)
@@ -228,10 +228,10 @@ func insert(c appengine.Context, kind string, r io.Reader) (map[string]interface
 }
 
 type prop struct {
-	Name string
-	Value interface{}
+	Name     string
+	Value    interface{}
 	Multiple bool
-	NoIndex bool
+	NoIndex  bool
 }
 type plist []prop
 
@@ -239,18 +239,58 @@ type plist []prop
 func plistToMap(pl plist, id int64) map[string]interface{} {
 	m := make(map[string]interface{})
 	for _, p := range pl {
-		if _, exists := m[p.Name]; exists {
-			if !p.Multiple {
-				// We would expect p.Multiple to be true here.
-				// Not sure it's worth failing/logging though...
+		if strings.Contains(p.Name, ".") {
+			parts := strings.Split(p.Name, ".")
+			sub := m
+			for _, p := range parts[:len(parts)-1] {
+				// Traverse the path up until the leaf
+				if i, exists := sub[p]; exists {
+					// Already seen this path, traverse it
+					if ii, ok := i.(map[string]interface{}); ok {
+						sub = ii
+					} else {
+						// Got a sub-property of a non-map property. Uh oh...
+						// Not sure it's worth failing/logging though...
+					}
+				} else {
+					// First time down this path, add a new empty map
+					next := map[string]interface{}{}
+					sub[p] = next
+					sub = next
+				}
 			}
-			if _, isArr := m[p.Name].([]interface{}); isArr {
-				m[p.Name] = append(m[p.Name].([]interface{}), p.Value)
+			leaf := parts[len(parts)-1]
+			if _, exists := sub[leaf]; exists {
+				if !p.Multiple {
+					// We would expect p.Multiple to be true here.
+					// Not sure it's worth failing/logging though...
+				}
+				if _, isArr := sub[leaf].([]interface{}); isArr {
+					// Already an array here, append to it
+					sub[leaf] = append(sub[leaf].([]interface{}), p.Value)
+				} else {
+					// Already a single value here, should be an array now.
+					sub[leaf] = []interface{}{sub[leaf], p.Value}
+				}
 			} else {
-				m[p.Name] = []interface{}{m[p.Name], p.Value}
+				sub[leaf] = p.Value
 			}
 		} else {
-			m[p.Name] = p.Value
+			if _, exists := m[p.Name]; exists {
+				if !p.Multiple {
+					// We would expect p.Multiple to be true here.
+					// Not sure it's worth failing/logging though...
+				}
+				if _, isArr := m[p.Name].([]interface{}); isArr {
+					// Already an array here, append to it
+					m[p.Name] = append(m[p.Name].([]interface{}), p.Value)
+				} else {
+					// Already a single value here, should be an array now.
+					m[p.Name] = []interface{}{m[p.Name], p.Value}
+				}
+			} else {
+				m[p.Name] = p.Value
+			}
 		}
 	}
 	m[idKey] = id
@@ -258,20 +298,25 @@ func plistToMap(pl plist, id int64) map[string]interface{} {
 }
 
 // mapToPlist transforms a map[string]interface{} such as you would get from decoding JSON into a plist to store in the datastore.
-func mapToPlist(m map[string]interface{}) plist {
+func mapToPlist(prefix string, m map[string]interface{}) plist {
 	pl := make(plist, 0, len(m))
 	for k, v := range m {
-		if _, mult := v.([]interface{}); mult {
+		if m, nest := v.(map[string]interface{}); nest {
+			// Generate a plist for this sub-map, and append it
+			pl = append(pl, mapToPlist(prefix+k+".", m)...)
+		} else if _, mult := v.([]interface{}); mult {
+			// Generate a prop for every item in the slice
 			for _, mv := range v.([]interface{}) {
 				pl = append(pl, prop{
-					Name:     k,
+					Name:     prefix + k,
 					Value:    mv,
 					Multiple: true,
 				})
 			}
+			// TODO: Apparently no way to store an empty list? That seems odd...
 		} else {
 			pl = append(pl, prop{
-				Name:  k,
+				Name:  prefix + k,
 				Value: v,
 			})
 		}
@@ -327,7 +372,7 @@ func update(c appengine.Context, kind string, id int64, r io.Reader) (map[string
 	}
 	m[updatedKey] = time.Now().Unix()
 
-	pl := mapToPlist(m)
+	pl := mapToPlist("", m)
 
 	k := datastore.NewKey(c, kind, "", id, nil)
 	if _, err := datastore.Put(c, k, &pl); err != nil {
