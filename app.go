@@ -12,6 +12,7 @@ package simplyput
 import (
 	"appengine"
 	"appengine/datastore"
+	"appengine/memcache"
 	"appengine/urlfetch"
 	"encoding/json"
 	"errors"
@@ -141,6 +142,7 @@ func handle(w http.ResponseWriter, r *http.Request) {
 	} else {
 		switch r.Method {
 		case "GET":
+			// TODO: Attempt a memGet and return early here.
 			resp, errCode = get(c, dsKind, id)
 		case "DELETE":
 			errCode = delete(c, dsKind, id)
@@ -161,6 +163,7 @@ func handle(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
+	// TODO: Buffer and memSet the JSON here
 	w.Header().Add("Content-Type", "application/json")
 }
 
@@ -380,4 +383,21 @@ func update(c appengine.Context, kind string, id int64, r io.Reader) (map[string
 	}
 	m[idKey] = id
 	return m, http.StatusOK
+}
+
+func memGet(c appengine.Context, k string) []byte {
+	// Ignore errors in getting. If cache miss, just return nil.
+	if i, err := memcache.Get(c, k); err == nil {
+		return i.Value
+	}
+	return nil
+}
+
+func memSet(c appengine.Context, k string, v []byte) {
+	if err := memcache.Set(c, &memcache.Item{
+		Key: k,
+		Value: v,
+	}); err != nil {
+		c.Warningf("Failed to update memcache key %s", k)
+	}
 }
