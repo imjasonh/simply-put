@@ -92,22 +92,30 @@ func handle(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 	client := urlfetch.Client(c)
 
-	// Get the access_token from the request and turn it into a user ID with which we will namespace Kinds in the datastore.
-	accessToken := r.Form.Get("access_token")
-	if accessToken == "" {
-		h := r.Header.Get("Authorization")
-		if strings.HasPrefix(h, "Bearer ") {
-			accessToken = h[len("Bearer "):]
+	var userID string
+	if appengine.IsDevAppServer() {
+		// For local development, don't require an access token or user ID
+		// If the user_id param is set, that's the user ID.
+		userID = r.Form.Get("user_id")
+	} else {
+		// Get the access_token from the request and turn it into a user ID with which we will namespace Kinds in the datastore.
+		accessToken := r.Form.Get("access_token")
+		if accessToken == "" {
+			h := r.Header.Get("Authorization")
+			if strings.HasPrefix(h, "Bearer ") {
+				accessToken = h[len("Bearer "):]
+			}
 		}
-	}
-	if accessToken == "" {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
-	userID, err := getUserID(accessToken, *client)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		if accessToken == "" {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+		var err error // Needed because otherwise the next line shadows userID...
+		userID, err = getUserID(accessToken, *client)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}
 
 	kind, id, err := getKindAndID(r.URL.Path)
