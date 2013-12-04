@@ -32,6 +32,9 @@ const (
 	defaultLimit = 10
 )
 
+// To override for testing
+var now = time.Now
+
 func init() {
 	http.HandleFunc("/datastore/v1dev/objects/", handle)
 }
@@ -205,7 +208,7 @@ func insert(c appengine.Context, kind string, r io.Reader) (map[string]interface
 		c.Errorf("%v", err)
 		return nil, http.StatusInternalServerError
 	}
-	m[createdKey] = time.Now().Unix()
+	m[createdKey] = now.Unix()
 
 	pl := mapToPlist(m)
 
@@ -313,7 +316,7 @@ func update(c appengine.Context, kind string, id int64, r io.Reader) (map[string
 		c.Errorf("%v", err)
 		return nil, http.StatusInternalServerError
 	}
-	m[updatedKey] = time.Now().Unix()
+	m[updatedKey] = now.Unix()
 
 	pl := mapToPlist(m)
 
