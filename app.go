@@ -33,7 +33,7 @@ const (
 )
 
 func init() {
-	http.HandleFunc("/datastore/v1dev/objects/", handle)
+	http.HandleFunc("/", handle)
 }
 
 type userQuery struct {

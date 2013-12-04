@@ -7,7 +7,9 @@ You can do this using a client library, or for testing, by going to the OAuth Pl
 
 **Create an object by sending a POST to `/<Kind>`**
 
-        $ curl https://simply-put.appspot.com/datastore/v1dev/objects/MyKindOfData?access_token=$ACCESS_TOKEN \
+For all examples, the kind being used is `MyKindOfData`
+
+        $ curl https://simply-put.appspot.com/MyKindOfData?access_token=$ACCESS_TOKEN \
               -H "Content-Type: application/json" \
               -X POST \
               -d '{"a":1,"b":false,"c":["ho",1,true]}' | python -m json.tool
@@ -25,7 +27,7 @@ You can do this using a client library, or for testing, by going to the OAuth Pl
 
 **Get an object by sending a GET to `/<Kind>/ID`**
 
-        $ curl https://simply-put.appspot.com/datastore/v1dev/objects/MyKindOfData/1001?access_token=$ACCESS_TOKEN
+        $ curl https://simply-put.appspot.com/MyKindOfData/1001?access_token=$ACCESS_TOKEN
         {
             "_created": 1386021382,
             "_id": 1001,
@@ -40,7 +42,7 @@ You can do this using a client library, or for testing, by going to the OAuth Pl
 
 **Update an object by sending a POST to `/<Kind>/ID`**
 
-        $ curl https://simply-put.appspot.com/datastore/v1dev/objects/MyKindOfData/1001?access_token=$ACCESS_TOKEN \
+        $ curl https://simply-put.appspot.com/MyKindOfData/1001?access_token=$ACCESS_TOKEN \
               -H "Content-Type: application/json" \
               -X POST \
               -d '{"a":3,"b":true,"c":["ho",1,true]}' | python -m json.tool
@@ -59,7 +61,7 @@ You can do this using a client library, or for testing, by going to the OAuth Pl
 
 **List objects by sending a GET to `/<Kind>` without the ID**
 
-        $ curl https://simply-put.appspot.com/datastore/v1dev/objects/MyKindOfData?access_token=$ACCESS_TOKEN | python -m json.tool
+        $ curl https://simply-put.appspot.com/MyKindOfData?access_token=$ACCESS_TOKEN | python -m json.tool
         {
             "items": [
                 {
@@ -91,6 +93,6 @@ You can do this using a client library, or for testing, by going to the OAuth Pl
 
 **Delete an object by sending a DELETE to `/<Kind>/ID`**
 
-        $ curl https://simply-put.appspot.com/datastore/v1dev/objects/MyKindOfData/1001?access_token=$ACCESS_TOKEN \
+        $ curl https://simply-put.appspot.com/MyKindOfData/1001?access_token=$ACCESS_TOKEN \
               -X DELETE
         (There is no response in this case)
