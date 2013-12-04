@@ -1,6 +1,5 @@
 package simplyput
 
-// TODO: PropertyList can support nested objects with named properties like "A.B.C", support nested JSON objects.
 // TODO: Add rudimentary single-property queries, pagination, sorting, etc.
 // TODO: Add memcache
 // TODO: Support ETags, If-Modified-Since, etc. (http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html)
