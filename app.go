@@ -194,7 +194,7 @@ func get(c appengine.Context, kind string, id int64) (map[string]interface{}, in
 		c.Errorf("%v", err)
 		return nil, http.StatusInternalServerError
 	}
-	m := plistToMap(pl, k)
+	m := plistToMap(pl, k.IntID())
 	m[idKey] = k.IntID()
 	return m, http.StatusOK
 }
@@ -228,7 +228,7 @@ type prop struct {
 type plist []prop
 
 // plistToMap transforms a plist such as you would get from the datastore into a map[string]interface{} suitable for JSON-encoding.
-func plistToMap(pl plist, k *datastore.Key) map[string]interface{} {
+func plistToMap(pl plist, id int64) map[string]interface{} {
 	m := make(map[string]interface{})
 	for _, p := range pl {
 		if _, exists := m[p.Name]; exists {
@@ -241,7 +241,7 @@ func plistToMap(pl plist, k *datastore.Key) map[string]interface{} {
 			m[p.Name] = p.Value
 		}
 	}
-	m[idKey] = k.IntID()
+	m[idKey] = id
 	return m
 }
 
@@ -293,7 +293,7 @@ func list(c appengine.Context, kind string, uq userQuery) (map[string]interface{
 			c.Errorf("%v", err)
 			return nil, http.StatusInternalServerError
 		}
-		m := plistToMap(pl, k)
+		m := plistToMap(pl, k.IntID())
 		items = append(items, m)
 		if crs, err = t.Cursor(); err != nil {
 			c.Errorf("%v", err)
