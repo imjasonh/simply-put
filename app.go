@@ -186,15 +186,15 @@ func delete(c appengine.Context, kind string, id int64) int {
 
 func get(c appengine.Context, kind string, id int64) (map[string]interface{}, int) {
 	k := datastore.NewKey(c, kind, "", id, nil)
-	var plist datastore.PropertyList
-	if err := datastore.Get(c, k, &plist); err != nil {
+	var pl plist
+	if err := datastore.Get(c, k, &pl); err != nil {
 		if err == datastore.ErrNoSuchEntity {
 			return nil, http.StatusNotFound
 		}
 		c.Errorf("%v", err)
 		return nil, http.StatusInternalServerError
 	}
-	m := plistToMap(plist, k)
+	m := plistToMap(pl, k)
 	m[idKey] = k.IntID()
 	return m, http.StatusOK
 }
@@ -207,10 +207,10 @@ func insert(c appengine.Context, kind string, r io.Reader) (map[string]interface
 	}
 	m[createdKey] = time.Now().Unix()
 
-	plist := mapToPlist(m)
+	pl := mapToPlist(m)
 
 	k := datastore.NewIncompleteKey(c, kind, nil)
-	k, err := datastore.Put(c, k, &plist)
+	k, err := datastore.Put(c, k, &pl)
 	if err != nil {
 		c.Errorf("%v", err)
 		return nil, http.StatusInternalServerError
@@ -219,10 +219,18 @@ func insert(c appengine.Context, kind string, r io.Reader) (map[string]interface
 	return m, http.StatusOK
 }
 
-// plistToMap transforms a PropertyList such as you would get from the datastore into a map[string]interface{} suitable for JSON-encoding.
-func plistToMap(plist datastore.PropertyList, k *datastore.Key) map[string]interface{} {
+type prop struct {
+	Name string
+	Value interface{}
+	Multiple bool
+	NoIndex bool
+}
+type plist []prop
+
+// plistToMap transforms a plist such as you would get from the datastore into a map[string]interface{} suitable for JSON-encoding.
+func plistToMap(pl plist, k *datastore.Key) map[string]interface{} {
 	m := make(map[string]interface{})
-	for _, p := range plist {
+	for _, p := range pl {
 		if _, exists := m[p.Name]; exists {
 			if _, isArr := m[p.Name].([]interface{}); isArr {
 				m[p.Name] = append(m[p.Name].([]interface{}), p.Value)
@@ -237,26 +245,26 @@ func plistToMap(plist datastore.PropertyList, k *datastore.Key) map[string]inter
 	return m
 }
 
-// mapToPlist transforms a map[string]interface{} such as you would get from decoding JSON into a PropertyList to store in the datastore.
-func mapToPlist(m map[string]interface{}) datastore.PropertyList {
-	plist := make(datastore.PropertyList, 0, len(m))
+// mapToPlist transforms a map[string]interface{} such as you would get from decoding JSON into a plist to store in the datastore.
+func mapToPlist(m map[string]interface{}) plist {
+	pl := make(plist, 0, len(m))
 	for k, v := range m {
 		if _, mult := v.([]interface{}); mult {
 			for _, mv := range v.([]interface{}) {
-				plist = append(plist, datastore.Property{
+				pl = append(pl, prop{
 					Name:     k,
 					Value:    mv,
 					Multiple: true,
 				})
 			}
 		} else {
-			plist = append(plist, datastore.Property{
+			pl = append(pl, prop{
 				Name:  k,
 				Value: v,
 			})
 		}
 	}
-	return plist
+	return pl
 }
 
 func list(c appengine.Context, kind string, uq userQuery) (map[string]interface{}, int) {
@@ -276,8 +284,8 @@ func list(c appengine.Context, kind string, uq userQuery) (map[string]interface{
 
 	var crs datastore.Cursor
 	for t := q.Run(c); ; {
-		var plist datastore.PropertyList
-		k, err := t.Next(&plist)
+		var pl plist
+		k, err := t.Next(&pl)
 		if err == datastore.Done {
 			break
 		}
@@ -285,7 +293,7 @@ func list(c appengine.Context, kind string, uq userQuery) (map[string]interface{
 			c.Errorf("%v", err)
 			return nil, http.StatusInternalServerError
 		}
-		m := plistToMap(plist, k)
+		m := plistToMap(pl, k)
 		items = append(items, m)
 		if crs, err = t.Cursor(); err != nil {
 			c.Errorf("%v", err)
@@ -307,10 +315,10 @@ func update(c appengine.Context, kind string, id int64, r io.Reader) (map[string
 	}
 	m[updatedKey] = time.Now().Unix()
 
-	plist := mapToPlist(m)
+	pl := mapToPlist(m)
 
 	k := datastore.NewKey(c, kind, "", id, nil)
-	if _, err := datastore.Put(c, k, &plist); err != nil {
+	if _, err := datastore.Put(c, k, &pl); err != nil {
 		c.Errorf("%v", err)
 		return nil, http.StatusInternalServerError
 	}
