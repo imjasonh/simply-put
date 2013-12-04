@@ -32,9 +32,6 @@ const (
 	defaultLimit = 10
 )
 
-// To override for testing
-var now = time.Now
-
 func init() {
 	http.HandleFunc("/datastore/v1dev/objects/", handle)
 }
@@ -208,7 +205,7 @@ func insert(c appengine.Context, kind string, r io.Reader) (map[string]interface
 		c.Errorf("%v", err)
 		return nil, http.StatusInternalServerError
 	}
-	m[createdKey] = now.Unix()
+	m[createdKey] = time.Now().Unix()
 
 	pl := mapToPlist(m)
 
@@ -235,6 +232,10 @@ func plistToMap(pl plist, id int64) map[string]interface{} {
 	m := make(map[string]interface{})
 	for _, p := range pl {
 		if _, exists := m[p.Name]; exists {
+			if !p.Multiple {
+				// We would expect p.Multiple to be true here.
+				// Not sure it's worth failing/logging though...
+			}
 			if _, isArr := m[p.Name].([]interface{}); isArr {
 				m[p.Name] = append(m[p.Name].([]interface{}), p.Value)
 			} else {
@@ -316,7 +317,7 @@ func update(c appengine.Context, kind string, id int64, r io.Reader) (map[string
 		c.Errorf("%v", err)
 		return nil, http.StatusInternalServerError
 	}
-	m[updatedKey] = now.Unix()
+	m[updatedKey] = time.Now().Unix()
 
 	pl := mapToPlist(m)
 
