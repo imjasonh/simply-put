@@ -82,13 +82,14 @@ func TestThereAndBackAgain(t *testing.T) {
 	}}
 	for _, c := range cases {
 		m := plistToMap(c.pl, id)
-		if reflect.DeepEqual(c.m, m) {
-			t.Error("plistToMap(%v, %d); got %v want %v", c.pl, id, c.m, m)
+		if !reflect.DeepEqual(c.m, m) {
+			t.Errorf("plistToMap(%v, %d); got %v want %v", c.pl, id, c.m, m)
 		}
 
+		delete(m, "_id")
 		pl := mapToPlist("", m)
-		if reflect.DeepEqual(c.pl, pl) {
-			t.Error("mapToPlist(%v); got %v want %v", m, pl, c.pl)
+		if !reflect.DeepEqual(c.pl, pl) {
+			t.Errorf("mapToPlist(%v); got %v want %v", m, pl, c.pl)
 		}
 	}
 }

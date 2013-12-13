@@ -145,7 +145,7 @@ func handle(w http.ResponseWriter, r *http.Request) {
 			// TODO: Attempt a memGet and return early here.
 			resp, errCode = get(c, dsKind, id)
 		case "DELETE":
-			errCode = delete(c, dsKind, id)
+			errCode = delete2(c, dsKind, id)
 		case "POST":
 			// This is strictly "replace all properties/values", not "add new properties, update existing"
 			resp, errCode = update(c, dsKind, id, r.Body)
@@ -181,7 +181,7 @@ func newUserQuery(r *http.Request) userQuery {
 	return uq
 }
 
-func delete(c appengine.Context, kind string, id int64) int {
+func delete2(c appengine.Context, kind string, id int64) int {
 	k := datastore.NewKey(c, kind, "", id, nil)
 	if err := datastore.Delete(c, k); err != nil {
 		if err == datastore.ErrNoSuchEntity {
