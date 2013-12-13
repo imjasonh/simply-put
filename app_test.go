@@ -1,6 +1,7 @@
 package simplyput
 
 import (
+	"reflect"
 	"testing"
 )
 
@@ -18,10 +19,10 @@ func TestThereAndBackAgain(t *testing.T) {
 		},
 	}, {
 		// Single-property plist -> single-property map
-		[]prop{
+		[]prop{{
 			Name:  "foo",
 			Value: "bar",
-		},
+		}},
 		map[string]interface{}{
 			"foo": "bar",
 			"_id": id,
@@ -81,12 +82,12 @@ func TestThereAndBackAgain(t *testing.T) {
 	}}
 	for _, c := range cases {
 		m := plistToMap(c.pl, id)
-		if c.m != m {
+		if reflect.DeepEqual(c.m, m) {
 			t.Error("plistToMap(%v, %d); got %v want %v", c.pl, id, c.m, m)
 		}
 
 		pl := mapToPlist("", m)
-		if c.pl != pl {
+		if reflect.DeepEqual(c.pl, pl) {
 			t.Error("mapToPlist(%v); got %v want %v", m, pl, c.pl)
 		}
 	}
