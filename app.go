@@ -134,7 +134,12 @@ func handle(w http.ResponseWriter, r *http.Request) {
 			resp, errCode = insert(c, dsKind, r.Body)
 			r.Body.Close()
 		case "GET":
-			resp, errCode = list(c, dsKind, newUserQuery(r))
+			uq, err := newUserQuery(r)
+			if err != nil {
+				http.Error(w, "Bad Request", http.StatusBadRequest)
+				return
+			}
+			resp, errCode = list(c, dsKind, *uq)
 		default:
 			http.Error(w, "Unsupported Method", http.StatusMethodNotAllowed)
 			return
@@ -167,18 +172,25 @@ func handle(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Content-Type", "application/json")
 }
 
-func newUserQuery(r *http.Request) userQuery {
+func newUserQuery(r *http.Request) (*userQuery, error) {
 	uq := userQuery{
 		StartCursor: r.FormValue("start"),
 		EndCursor:   r.FormValue("end"),
 	}
-	// TODO: MustParse for limit/offset, else panic
-	uq.Limit, _ = strconv.Atoi(r.FormValue("limit"))
-	uq.Offset, _ = strconv.Atoi(r.FormValue("offset"))
+	lim, err := strconv.Atoi(r.FormValue("limit"))
+	if err != nil {
+		return nil, err
+	}
+	uq.Limit = lim
+	off, err := strconv.Atoi(r.FormValue("offset"))
+	if err != nil {
+		return nil, err
+	}
+	uq.Offset = off
 
 	// TODO: Support ?where=foo<bar queries (which may or may not be annoying to scope for users...)
 	_ = r.FormValue("where")
-	return uq
+	return &uq, nil
 }
 
 func delete2(c appengine.Context, kind string, id int64) int {
