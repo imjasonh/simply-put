@@ -112,10 +112,11 @@ func TestUserQuery(t *testing.T) {
 				"limit":  []string{"1"},
 				"start":  []string{"s"},
 				"end":    []string{"e"},
+				"sort":   []string{"-foo"},
 				"where":  []string{"foo=bar", "baz=qux", "quux=duck"},
 			},
 		},
-		&userQuery{Limit: 1, StartCursor: "s", EndCursor: "e", Filters: []filter{
+		&userQuery{Limit: 1, StartCursor: "s", EndCursor: "e", Sort: "-foo", Filters: []filter{
 			{Key: "foo", Value: "bar"},
 			{Key: "baz", Value: "qux"},
 			{Key: "quux", Value: "duck"},

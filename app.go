@@ -1,6 +1,5 @@
 package simplyput
 
-// TODO: Add rudimentary single-property queries, pagination, sorting, etc.
 // TODO: Add memcache
 // TODO: Support ETags, If-Modified-Since, etc. (http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html)
 // TODO: PUT requests
@@ -41,7 +40,7 @@ type filter struct {
 }
 type userQuery struct {
 	Limit          int
-	StartCursor, EndCursor string
+	StartCursor, EndCursor, Sort string
 	Filters                []filter
 }
 
@@ -179,6 +178,7 @@ func newUserQuery(r *http.Request) (*userQuery, error) {
 	uq := userQuery{
 		StartCursor: r.FormValue("start"),
 		EndCursor:   r.FormValue("end"),
+		Sort:        r.FormValue("sort"),
 	}
 	if r.FormValue("limit") != "" {
 		lim, err := strconv.Atoi(r.FormValue("limit"))
