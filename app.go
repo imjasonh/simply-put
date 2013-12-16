@@ -149,7 +149,6 @@ func handle(w http.ResponseWriter, r *http.Request) {
 	} else {
 		switch r.Method {
 		case "GET":
-			// TODO: Attempt a memGet and return early here.
 			resp, errCode = get(c, dsKind, id)
 		case "DELETE":
 			errCode = delete2(c, dsKind, id)
@@ -406,12 +405,14 @@ func update(c appengine.Context, kind string, id int64, r io.Reader) (map[string
 	return m, http.StatusOK
 }
 
-func memGet(c appengine.Context, k string) []byte {
+func memGet(c appengine.Context, k string) (bool, []byte) {
 	// Ignore errors in getting. If cache miss, just return nil.
 	if i, err := memcache.Get(c, k); err == nil {
-		return i.Value
+		return true, i.Value
+	} else if err != memcache.ErrCacheMiss {
+		c.Warningf("Error getting from memcache key %s: %v", k, err)
 	}
-	return nil
+	return false, nil
 }
 
 func memSet(c appengine.Context, k string, v []byte) {
