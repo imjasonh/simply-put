@@ -109,11 +109,11 @@ func TestUserQuery(t *testing.T) {
 		// User requests all the params
 		http.Request{
 			Form: map[string][]string{
-				"limit":  []string{"1"},
-				"start":  []string{"s"},
-				"end":    []string{"e"},
-				"sort":   []string{"-foo"},
-				"where":  []string{"foo=bar", "baz=qux", "quux=duck"},
+				"limit": []string{"1"},
+				"start": []string{"s"},
+				"end":   []string{"e"},
+				"sort":  []string{"-foo"},
+				"where": []string{"foo=bar", "baz=qux", "quux=duck"},
 			},
 		},
 		&userQuery{Limit: 1, StartCursor: "s", EndCursor: "e", Sort: "-foo", Filters: []filter{
@@ -144,7 +144,7 @@ func TestUserQuery(t *testing.T) {
 	for _, c := range cases {
 		a, err := newUserQuery(&c.r)
 		if c.hasError && err == nil {
-			t.Error("expected error")
+			t.Errorf("newUserQuery(%v); expected error", c.r)
 		} else if err != nil && !c.hasError {
 			t.Errorf("unexpected error %v", err)
 		} else if !reflect.DeepEqual(c.uq, a) {
@@ -155,23 +155,28 @@ func TestUserQuery(t *testing.T) {
 
 func TestGetKindAndID(t *testing.T) {
 	cases := []struct {
-		path string
-		kind string
-		id int64
+		path     string
+		kind     string
+		id       int64
 		hasError bool
 	}{
 		{"/MyKindOfData", "MyKindOfData", 0, false},
 		{"/MyKindOfData/123", "MyKindOfData", 123, false},
-		{"/123", "", 0, true},
+		{"/123", "123", 0, false}, // Not sure if this is actually valid...
+
+		{"/bad/path/too/long", "", 0, true},
+		{"bad/path", "", 0, true},
+		{"/MyKindOfData/badid", "", 0, true},
+		{"/", "", 0, true},
 	}
 	for _, c := range cases {
 		kind, id, err := getKindAndID(c.path)
 		if c.hasError && err == nil {
-			t.Error("expected error")
+			t.Errorf("getKindAndID(%s); expected error, got %#s,%d", c.path, kind, id)
 		} else if err != nil && !c.hasError {
 			t.Errorf("unexpected error %v", err)
 		} else if c.kind != kind || c.id != id {
-			t.Errorf("getKindAndID(%s); got %s/%d want %s/%d", c.path, kind, id, c.kind, c.id)
+			t.Errorf("getKindAndID(%s); got %s,%d want %s,%d", c.path, kind, id, c.kind, c.id)
 		}
 	}
 }

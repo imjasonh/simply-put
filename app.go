@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -31,6 +30,8 @@ const (
 	defaultLimit = 10
 )
 
+var invalidPath = errors.New("invalid path")
+
 func init() {
 	http.HandleFunc("/", handle)
 }
@@ -39,9 +40,9 @@ type filter struct {
 	Key, Value string
 }
 type userQuery struct {
-	Limit          int
+	Limit                        int
 	StartCursor, EndCursor, Sort string
-	Filters                []filter
+	Filters                      []filter
 }
 
 // getUserID gets the Google User ID for an access token.
@@ -66,26 +67,22 @@ func getUserID(accessToken string, client http.Client) (string, error) {
 
 // getKindAndID parses the kind and ID from a request path.
 func getKindAndID(path string) (string, int64, error) {
-	// TODO: Refactor this for simplicity/correctness
-	// Only accept /Kind and /Kind/ID
-	if match, err := regexp.MatchString("/[a-zA-Z]+/[0-9]+", path); err != nil {
-		return "", int64(0), err
-	} else if match {
-		kind := path[1:strings.LastIndex(path, "/")]
-		idStr := path[strings.LastIndex(path, "/")+1:]
-		id, err := strconv.ParseInt(idStr, 10, 64)
+	if !strings.HasPrefix(path, "/") || path == "/" {
+		return "", int64(0), invalidPath
+	}
+	parts := strings.Split(path[1:], "/")
+	if len(parts) > 2 {
+		return "", int64(0), invalidPath
+	} else if len(parts) == 1 {
+		return parts[0], int64(0), nil
+	} else if len(parts) == 2 {
+		id, err := strconv.ParseInt(parts[1], 10, 64)
 		if err != nil {
 			return "", int64(0), err
 		}
-		return kind, id, nil
+		return parts[0], id, nil
 	}
-	if match, err := regexp.MatchString("/[a-zA-Z]+", path); err != nil {
-		return "", int64(0), err
-	} else if match {
-		kind := path[1:]
-		return kind, int64(0), nil
-	}
-	return "", int64(0), errors.New("invalid path")
+	return "", int64(0), invalidPath
 }
 
 // handle dispatches requests to the relevant API method and arranges certain common state
