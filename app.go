@@ -348,6 +348,9 @@ func list(c appengine.Context, kind string, uq userQuery) (map[string]interface{
 	if uq.Limit != 0 {
 		q = q.Limit(uq.Limit)
 	}
+	if uq.Sort != "" {
+		q = q.Order(uq.Sort)
+	}
 	if c, err := datastore.DecodeCursor(uq.StartCursor); err == nil {
 		q = q.Start(c)
 	}
