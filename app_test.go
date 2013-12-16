@@ -1,6 +1,7 @@
 package simplyput
 
 import (
+	"net/http"
 	"reflect"
 	"testing"
 )
@@ -90,6 +91,63 @@ func TestThereAndBackAgain(t *testing.T) {
 		pl := mapToPlist("", m)
 		if !reflect.DeepEqual(c.pl, pl) {
 			t.Errorf("mapToPlist(%v); got %#v want %#v", m, pl, c.pl)
+		}
+	}
+}
+
+func TestUserQuery(t *testing.T) {
+	cases := []struct {
+		r        http.Request
+		uq       *userQuery
+		hasError bool
+	}{{
+		// User didn't specify any params
+		http.Request{},
+		&userQuery{},
+		false,
+	}, {
+		// User requests all the params
+		http.Request{
+			Form: map[string][]string{
+				"limit":  []string{"1"},
+				"start":  []string{"s"},
+				"end":    []string{"e"},
+				"where":  []string{"foo=bar", "baz=qux", "quux=duck"},
+			},
+		},
+		&userQuery{Limit: 1, StartCursor: "s", EndCursor: "e", Filters: []filter{
+			{Key: "foo", Value: "bar"},
+			{Key: "baz", Value: "qux"},
+			{Key: "quux", Value: "duck"},
+		}},
+		false,
+	}, {
+		// User passes non-numerical "limit" param
+		http.Request{
+			Form: map[string][]string{
+				"limit": []string{"bad"},
+			},
+		},
+		nil,
+		true,
+	}, {
+		// User passes malformed "where" param
+		http.Request{
+			Form: map[string][]string{
+				"where": []string{"bad"},
+			},
+		},
+		nil,
+		true,
+	}}
+	for _, c := range cases {
+		a, err := newUserQuery(&c.r)
+		if c.hasError && err == nil {
+			t.Errorf("expected error")
+		} else if err != nil && !c.hasError {
+			t.Errorf("unexpected error %v", err)
+		} else if !reflect.DeepEqual(c.uq, a) {
+			t.Errorf("newUserQuery(%v); got %#v want %#v", c.r, a, c.uq)
 		}
 	}
 }

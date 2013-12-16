@@ -36,10 +36,13 @@ func init() {
 	http.HandleFunc("/", handle)
 }
 
+type filter struct {
+	Key, Value string
+}
 type userQuery struct {
-	Limit, Offset int
-	FilterKey, FilterType, FilterValue,
+	Limit          int
 	StartCursor, EndCursor string
+	Filters                []filter
 }
 
 // getUserID gets the Google User ID for an access token.
@@ -177,19 +180,21 @@ func newUserQuery(r *http.Request) (*userQuery, error) {
 		StartCursor: r.FormValue("start"),
 		EndCursor:   r.FormValue("end"),
 	}
-	lim, err := strconv.Atoi(r.FormValue("limit"))
-	if err != nil {
-		return nil, err
+	if r.FormValue("limit") != "" {
+		lim, err := strconv.Atoi(r.FormValue("limit"))
+		if err != nil {
+			return nil, err
+		}
+		uq.Limit = lim
 	}
-	uq.Limit = lim
-	off, err := strconv.Atoi(r.FormValue("offset"))
-	if err != nil {
-		return nil, err
-	}
-	uq.Offset = off
 
-	// TODO: Support ?where=foo<bar queries (which may or may not be annoying to scope for users...)
-	_ = r.FormValue("where")
+	for _, f := range map[string][]string(r.Form)["where"] {
+		parts := strings.Split(f, "=")
+		if len(parts) != 2 {
+			return nil, errors.New("invalid where: " + f)
+		}
+		uq.Filters = append(uq.Filters, filter{Key: parts[0], Value: parts[1]})
+	}
 	return &uq, nil
 }
 
@@ -345,10 +350,14 @@ func list(c appengine.Context, kind string, uq userQuery) (map[string]interface{
 		q = q.Limit(uq.Limit)
 	}
 	if c, err := datastore.DecodeCursor(uq.StartCursor); err == nil {
-		q.Start(c)
+		q = q.Start(c)
 	}
 	if c, err := datastore.DecodeCursor(uq.EndCursor); err == nil {
-		q.End(c)
+		q = q.End(c)
+	}
+	// TODO: Support numerical filters, not just strings
+	for _, f := range uq.Filters {
+		q = q.Filter(f.Key, f.Value)
 	}
 
 	items := make([]map[string]interface{}, 0)
@@ -407,7 +416,7 @@ func memGet(c appengine.Context, k string) []byte {
 
 func memSet(c appengine.Context, k string, v []byte) {
 	if err := memcache.Set(c, &memcache.Item{
-		Key: k,
+		Key:   k,
 		Value: v,
 	}); err != nil {
 		c.Warningf("Failed to update memcache key %s", k)
