@@ -66,10 +66,12 @@ func getUserID(accessToken string, client http.Client) (string, error) {
 
 // getKindAndID parses the kind and ID from a request path.
 func getKindAndID(path string) (string, int64, error) {
-	if match, err := regexp.MatchString("/datastore/v1dev/objects/[a-zA-Z]+/[0-9]+", path); err != nil {
+	// TODO: Refactor this for simplicity/correctness
+	// Only accept /Kind and /Kind/ID
+	if match, err := regexp.MatchString("/[a-zA-Z]+/[0-9]+", path); err != nil {
 		return "", int64(0), err
 	} else if match {
-		kind := path[len("/datastore/v1dev/objects/"):strings.LastIndex(path, "/")]
+		kind := path[1:strings.LastIndex(path, "/")]
 		idStr := path[strings.LastIndex(path, "/")+1:]
 		id, err := strconv.ParseInt(idStr, 10, 64)
 		if err != nil {
@@ -77,10 +79,10 @@ func getKindAndID(path string) (string, int64, error) {
 		}
 		return kind, id, nil
 	}
-	if match, err := regexp.MatchString("/datastore/v1dev/objects/[a-zA-Z]+", path); err != nil {
+	if match, err := regexp.MatchString("/[a-zA-Z]+", path); err != nil {
 		return "", int64(0), err
 	} else if match {
-		kind := path[len("/datastore/v1dev/objects/"):]
+		kind := path[1:]
 		return kind, int64(0), nil
 	}
 	return "", int64(0), errors.New("invalid path")

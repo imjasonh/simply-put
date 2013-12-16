@@ -144,11 +144,34 @@ func TestUserQuery(t *testing.T) {
 	for _, c := range cases {
 		a, err := newUserQuery(&c.r)
 		if c.hasError && err == nil {
-			t.Errorf("expected error")
+			t.Error("expected error")
 		} else if err != nil && !c.hasError {
 			t.Errorf("unexpected error %v", err)
 		} else if !reflect.DeepEqual(c.uq, a) {
 			t.Errorf("newUserQuery(%v); got %#v want %#v", c.r, a, c.uq)
+		}
+	}
+}
+
+func TestGetKindAndID(t *testing.T) {
+	cases := []struct {
+		path string
+		kind string
+		id int64
+		hasError bool
+	}{
+		{"/MyKindOfData", "MyKindOfData", 0, false},
+		{"/MyKindOfData/123", "MyKindOfData", 123, false},
+		{"/123", "", 0, true},
+	}
+	for _, c := range cases {
+		kind, id, err := getKindAndID(c.path)
+		if c.hasError && err == nil {
+			t.Error("expected error")
+		} else if err != nil && !c.hasError {
+			t.Errorf("unexpected error %v", err)
+		} else if c.kind != kind || c.id != id {
+			t.Errorf("getKindAndID(%s); got %s/%d want %s/%d", c.path, kind, id, c.kind, c.id)
 		}
 	}
 }
