@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-const id = 123
+const id = int64(123)
 
 func TestThereAndBackAgain(t *testing.T) {
 	cases := []struct {
@@ -83,13 +83,13 @@ func TestThereAndBackAgain(t *testing.T) {
 	for _, c := range cases {
 		m := plistToMap(c.pl, id)
 		if !reflect.DeepEqual(c.m, m) {
-			t.Errorf("plistToMap(%v, %d); got %v want %v", c.pl, id, c.m, m)
+			t.Errorf("plistToMap(%v, %d); got %#v want %#v", c.pl, id, c.m, m)
 		}
 
 		delete(m, "_id")
 		pl := mapToPlist("", m)
 		if !reflect.DeepEqual(c.pl, pl) {
-			t.Errorf("mapToPlist(%v); got %v want %v", m, pl, c.pl)
+			t.Errorf("mapToPlist(%v); got %#v want %#v", m, pl, c.pl)
 		}
 	}
 }
