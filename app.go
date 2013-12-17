@@ -254,58 +254,40 @@ type plist []prop
 func plistToMap(pl plist, id int64) map[string]interface{} {
 	m := make(map[string]interface{})
 	for _, p := range pl {
-		if strings.Contains(p.Name, ".") {
-			parts := strings.Split(p.Name, ".")
-			sub := m
-			for _, p := range parts[:len(parts)-1] {
-				// Traverse the path up until the leaf
-				if i, exists := sub[p]; exists {
-					// Already seen this path, traverse it
-					if ii, ok := i.(map[string]interface{}); ok {
-						sub = ii
-					} else {
-						// Got a sub-property of a non-map property. Uh oh...
-						// Not sure it's worth failing/logging though...
-					}
+		parts := strings.Split(p.Name, ".")
+		sub := m
+		for _, p := range parts[:len(parts)-1] {
+			// Traverse the path up until the leaf
+			if i, exists := sub[p]; exists {
+				// Already seen this path, traverse it
+				if ii, ok := i.(map[string]interface{}); ok {
+					sub = ii
 				} else {
-					// First time down this path, add a new empty map
-					next := map[string]interface{}{}
-					sub[p] = next
-					sub = next
-				}
-			}
-			leaf := parts[len(parts)-1]
-			if _, exists := sub[leaf]; exists {
-				if !p.Multiple {
-					// We would expect p.Multiple to be true here.
+					// Got a sub-property of a non-map property. Uh oh...
 					// Not sure it's worth failing/logging though...
 				}
-				if _, isArr := sub[leaf].([]interface{}); isArr {
-					// Already an array here, append to it
-					sub[leaf] = append(sub[leaf].([]interface{}), p.Value)
-				} else {
-					// Already a single value here, should be an array now.
-					sub[leaf] = []interface{}{sub[leaf], p.Value}
-				}
 			} else {
-				sub[leaf] = p.Value
+				// First time down this path, add a new empty map
+				next := map[string]interface{}{}
+				sub[p] = next
+				sub = next
+			}
+		}
+		leaf := parts[len(parts)-1]
+		if _, exists := sub[leaf]; exists {
+			if !p.Multiple {
+				// We would expect p.Multiple to be true here.
+				// Not sure it's worth failing/logging though...
+			}
+			if _, isArr := sub[leaf].([]interface{}); isArr {
+				// Already an array here, append to it
+				sub[leaf] = append(sub[leaf].([]interface{}), p.Value)
+			} else {
+				// Already a single value here, should be an array now.
+				sub[leaf] = []interface{}{sub[leaf], p.Value}
 			}
 		} else {
-			if _, exists := m[p.Name]; exists {
-				if !p.Multiple {
-					// We would expect p.Multiple to be true here.
-					// Not sure it's worth failing/logging though...
-				}
-				if _, isArr := m[p.Name].([]interface{}); isArr {
-					// Already an array here, append to it
-					m[p.Name] = append(m[p.Name].([]interface{}), p.Value)
-				} else {
-					// Already a single value here, should be an array now.
-					m[p.Name] = []interface{}{m[p.Name], p.Value}
-				}
-			} else {
-				m[p.Name] = p.Value
-			}
+			sub[leaf] = p.Value
 		}
 	}
 	m[idKey] = id
