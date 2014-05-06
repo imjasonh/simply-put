@@ -7,11 +7,9 @@ package simplyput
 // TODO: PATCH requests/semantics
 // TODO: Batch requests (via multipart?)
 // TODO: User POSTs a JSON schema, future requests are validated against that schema. Would anybody use that?
+// TODO: Add end-to-end tests with appengine/aetest and/or net/http/httptest
 
 import (
-	"appengine"
-	"appengine/datastore"
-	"appengine/urlfetch"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -20,6 +18,10 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"appengine"
+	"appengine/datastore"
+	"appengine/urlfetch"
 )
 
 const (
