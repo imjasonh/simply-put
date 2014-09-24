@@ -1,5 +1,7 @@
-Simple REST JSON API for putting, getting, listing, updating and deleting data objects
+Simple REST JSON API for putting, getting, listing, querying, updating and deleting arbitrary data objects
 -----
+
+[![Build Status](https://travis-ci.org/ImJasonH/simply-put.svg)](https://travis-ci.org/ImJasonH/simply-put)
 
 First of all, you will need to get an OAuth access token for the scope `https://www.googleapis.com/auth/userinfo.email`
 
