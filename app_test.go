@@ -174,7 +174,7 @@ func TestGetKindAndID(t *testing.T) {
 	for _, c := range cases {
 		kind, id, err := getKindAndID(c.path)
 		if c.hasError && err == nil {
-			t.Errorf("getKindAndID(%s); expected error, got %#s,%d", c.path, kind, id)
+			t.Errorf("getKindAndID(%s); expected error, got %s,%d", c.path, kind, id)
 		} else if err != nil && !c.hasError {
 			t.Errorf("unexpected error %v", err)
 		} else if c.kind != kind || c.id != id {

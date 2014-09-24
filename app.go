@@ -1,5 +1,6 @@
 package simplyput
 
+// TODO: Move metadata into single top-level "_meta" field to futureproof
 // TODO: Add memcache
 // TODO: Support ETags, If-Modified-Since, etc. (http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html)
 // TODO: PUT requests
@@ -32,10 +33,12 @@ const (
 	defaultLimit = 10
 )
 
+var nowFunc = time.Now
+
 var invalidPath = errors.New("invalid path")
 
 func init() {
-	http.HandleFunc("/", handle)
+	http.HandleFunc("/", handleHTTP)
 }
 
 type filter struct {
@@ -88,8 +91,11 @@ func getKindAndID(path string) (string, int64, error) {
 }
 
 // handle dispatches requests to the relevant API method and arranges certain common state
-func handle(w http.ResponseWriter, r *http.Request) {
-	c := appengine.NewContext(r)
+func handleHTTP(w http.ResponseWriter, r *http.Request) {
+	handle(appengine.NewContext(r), w, r)
+}
+
+func handle(c appengine.Context, w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Access-Control-Allow-Origin", "*")
 
 	r.ParseForm()
@@ -129,7 +135,7 @@ func handle(w http.ResponseWriter, r *http.Request) {
 
 	dsKind := fmt.Sprintf("%s--%s", userID, kind)
 
-	resp := make(map[string]interface{}, 0)
+	var resp map[string]interface{}
 	errCode := http.StatusOK
 	if id == int64(0) {
 		switch r.Method {
@@ -166,9 +172,11 @@ func handle(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "", errCode)
 		return
 	}
-	if err := json.NewEncoder(w).Encode(&resp); err != nil {
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
+	if resp != nil && len(resp) != 0 {
+		if err := json.NewEncoder(w).Encode(&resp); err != nil {
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
 	}
 	w.Header().Add("Content-Type", "application/json")
 }
@@ -230,7 +238,7 @@ func insert(c appengine.Context, kind string, r io.Reader) (map[string]interface
 	if err != nil {
 		return nil, http.StatusInternalServerError
 	}
-	m[createdKey] = time.Now().Unix()
+	m[createdKey] = nowFunc().Unix()
 
 	pl := mapToPlist("", m)
 
@@ -240,7 +248,7 @@ func insert(c appengine.Context, kind string, r io.Reader) (map[string]interface
 		c.Errorf("%v", err)
 		return nil, http.StatusInternalServerError
 	}
-	m[idKey] = k.IntID()
+	m[idKey] = int64(k.IntID())
 	return m, http.StatusOK
 }
 
@@ -363,11 +371,15 @@ func list(c appengine.Context, kind string, uq userQuery) (map[string]interface{
 }
 
 func update(c appengine.Context, kind string, id int64, r io.Reader) (map[string]interface{}, int) {
+	// TODO: Get the entity, if it's found, set the _created time accordingly.
+
 	m, err := fromJSON(c, r)
 	if err != nil {
 		return nil, http.StatusInternalServerError
 	}
-	m[updatedKey] = time.Now().Unix()
+	delete(m, createdKey) // Ignore any _created value the user provides
+	delete(m, idKey)      // Ignore any _id value the user provides
+	m[updatedKey] = nowFunc().Unix()
 
 	pl := mapToPlist("", m)
 
