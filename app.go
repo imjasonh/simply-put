@@ -212,7 +212,7 @@ func delete2(c appengine.Context, kind string, id int64) int {
 
 func get(c appengine.Context, kind string, id int64) (map[string]interface{}, int) {
 	k := datastore.NewKey(c, kind, "", id, nil)
-	var pl plist
+	var pl datastore.PropertyList
 	if err := datastore.Get(c, k, &pl); err != nil {
 		if err == datastore.ErrNoSuchEntity {
 			return nil, http.StatusNotFound
@@ -226,9 +226,8 @@ func get(c appengine.Context, kind string, id int64) (map[string]interface{}, in
 }
 
 func insert(c appengine.Context, kind string, r io.Reader) (map[string]interface{}, int) {
-	var m map[string]interface{}
-	if err := json.NewDecoder(r).Decode(&m); err != nil {
-		c.Errorf("%v", err)
+	m, err := fromJSON(c, r)
+	if err != nil {
 		return nil, http.StatusInternalServerError
 	}
 	m[createdKey] = time.Now().Unix()
@@ -236,7 +235,7 @@ func insert(c appengine.Context, kind string, r io.Reader) (map[string]interface
 	pl := mapToPlist("", m)
 
 	k := datastore.NewIncompleteKey(c, kind, nil)
-	k, err := datastore.Put(c, k, &pl)
+	k, err = datastore.Put(c, k, &pl)
 	if err != nil {
 		c.Errorf("%v", err)
 		return nil, http.StatusInternalServerError
@@ -245,16 +244,8 @@ func insert(c appengine.Context, kind string, r io.Reader) (map[string]interface
 	return m, http.StatusOK
 }
 
-type prop struct {
-	Name     string
-	Value    interface{}
-	Multiple bool
-	NoIndex  bool
-}
-type plist []prop
-
 // plistToMap transforms a plist such as you would get from the datastore into a map[string]interface{} suitable for JSON-encoding.
-func plistToMap(pl plist, id int64) map[string]interface{} {
+func plistToMap(pl datastore.PropertyList, id int64) map[string]interface{} {
 	m := make(map[string]interface{})
 	for _, p := range pl {
 		parts := strings.Split(p.Name, ".")
@@ -297,17 +288,17 @@ func plistToMap(pl plist, id int64) map[string]interface{} {
 	return m
 }
 
-// mapToPlist transforms a map[string]interface{} such as you would get from decoding JSON into a plist to store in the datastore.
-func mapToPlist(prefix string, m map[string]interface{}) plist {
-	pl := make(plist, 0, len(m))
+// mapToPlist transforms a map[string]interface{} such as you would get from decoding JSON into a datastore.PropertyList to store in the datastore.
+func mapToPlist(prefix string, m map[string]interface{}) datastore.PropertyList {
+	pl := make(datastore.PropertyList, 0, len(m))
 	for k, v := range m {
 		if m, nest := v.(map[string]interface{}); nest {
-			// Generate a plist for this sub-map, and append it
+			// Generate a datastore.PropertyList for this sub-map, and append it
 			pl = append(pl, mapToPlist(prefix+k+".", m)...)
 		} else if _, mult := v.([]interface{}); mult {
 			// Generate a prop for every item in the slice
 			for _, mv := range v.([]interface{}) {
-				pl = append(pl, prop{
+				pl = append(pl, datastore.Property{
 					Name:     prefix + k,
 					Value:    mv,
 					Multiple: true,
@@ -315,7 +306,7 @@ func mapToPlist(prefix string, m map[string]interface{}) plist {
 			}
 			// TODO: Apparently no way to store an empty list? That seems odd...
 		} else {
-			pl = append(pl, prop{
+			pl = append(pl, datastore.Property{
 				Name:  prefix + k,
 				Value: v,
 			})
@@ -348,7 +339,7 @@ func list(c appengine.Context, kind string, uq userQuery) (map[string]interface{
 
 	var crs datastore.Cursor
 	for t := q.Run(c); ; {
-		var pl plist
+		var pl datastore.PropertyList
 		k, err := t.Next(&pl)
 		if err == datastore.Done {
 			break
@@ -372,9 +363,8 @@ func list(c appengine.Context, kind string, uq userQuery) (map[string]interface{
 }
 
 func update(c appengine.Context, kind string, id int64, r io.Reader) (map[string]interface{}, int) {
-	var m map[string]interface{}
-	if err := json.NewDecoder(r).Decode(&m); err != nil {
-		c.Errorf("%v", err)
+	m, err := fromJSON(c, r)
+	if err != nil {
 		return nil, http.StatusInternalServerError
 	}
 	m[updatedKey] = time.Now().Unix()
@@ -388,4 +378,13 @@ func update(c appengine.Context, kind string, id int64, r io.Reader) (map[string
 	}
 	m[idKey] = id
 	return m, http.StatusOK
+}
+
+func fromJSON(c appengine.Context, r io.Reader) (map[string]interface{}, error) {
+	var m map[string]interface{}
+	err := json.NewDecoder(r).Decode(&m)
+	if err != nil {
+		c.Errorf("decoding json: %v", err)
+	}
+	return m, err
 }

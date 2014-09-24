@@ -4,23 +4,25 @@ import (
 	"net/http"
 	"reflect"
 	"testing"
+
+	"appengine/datastore"
 )
 
 const id = int64(123)
 
 func TestThereAndBackAgain(t *testing.T) {
 	cases := []struct {
-		pl plist
+		pl datastore.PropertyList
 		m  map[string]interface{}
 	}{{
 		// Empty plist -> nearly-empty map
-		[]prop{},
+		[]datastore.Property{},
 		map[string]interface{}{
 			"_id": id,
 		},
 	}, {
 		// Single-property plist -> single-property map
-		[]prop{{
+		[]datastore.Property{{
 			Name:  "foo",
 			Value: "bar",
 		}},
@@ -30,7 +32,7 @@ func TestThereAndBackAgain(t *testing.T) {
 		},
 	}, {
 		// Lists of arbitrary types
-		[]prop{{
+		[]datastore.Property{{
 			Name:     "foo",
 			Value:    "a",
 			Multiple: true,
@@ -49,7 +51,7 @@ func TestThereAndBackAgain(t *testing.T) {
 		},
 	}, {
 		// Nested properties -> nested maps
-		[]prop{{
+		[]datastore.Property{{
 			Name:  "a.b.c",
 			Value: true,
 		}},
@@ -63,7 +65,7 @@ func TestThereAndBackAgain(t *testing.T) {
 		},
 	}, {
 		// Nested properties with a list at the leaf
-		[]prop{{
+		[]datastore.Property{{
 			Name:     "a.b.c",
 			Value:    true,
 			Multiple: true,
