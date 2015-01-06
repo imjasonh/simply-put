@@ -50,21 +50,27 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		case "POST":
 			b, errCode = s.insert(kind, r.Body)
 			r.Body.Close()
-		case "GET":
+		case "GET", "HEAD":
 			uq, err := newUserQuery(r)
 			if err != nil {
 				http.Error(w, "Bad Request", http.StatusBadRequest)
 				return
 			}
 			b, errCode = s.list(kind, *uq)
+			if r.Method == "HEAD" {
+				b = nil
+			}
 		default:
 			http.Error(w, "Unsupported Method", http.StatusMethodNotAllowed)
 			return
 		}
 	} else {
 		switch r.Method {
-		case "GET":
+		case "GET", "HEAD":
 			b, errCode = s.get(kind, id)
+			if r.Method == "HEAD" {
+				b = nil
+			}
 		case "DELETE":
 			errCode = s.delete2(kind, id)
 		case "POST":
