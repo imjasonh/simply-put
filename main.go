@@ -131,6 +131,7 @@ func newUserQuery(r *http.Request) (*userQuery, error) {
 		StartCursor: r.FormValue("start"),
 		EndCursor:   r.FormValue("end"),
 		Sort:        r.FormValue("sort"),
+		Limit:       defaultLimit,
 	}
 	if r.FormValue("limit") != "" {
 		lim, err := strconv.Atoi(r.FormValue("limit"))
@@ -307,7 +308,7 @@ func (s *server) update(kind, id string, r io.Reader) ([]byte, int) {
 
 func fromJSON(b []byte) (map[string]interface{}, error) {
 	var m map[string]interface{}
-	err := json.NewDecoder(bytes.NewReader(b)).Decode(m)
+	err := json.NewDecoder(bytes.NewReader(b)).Decode(&m)
 	return m, err
 }
 
