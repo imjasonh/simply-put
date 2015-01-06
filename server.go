@@ -1,13 +1,12 @@
 package main
 
-// TODO: Handle partial update (PATCH) and don't overwrite _created if the update doesn't include it.
+// TODO: Handle partial update (PATCH)
 // TODO: Add end-to-end tests with net/http/httptest
 // TODO: User POSTs a JSON schema, future requests are validated against that schema.
 //	- user also defines which indices they want on each type
 //	- create/delete indices after data is populated?
 // TODO: Move metadata into single top-level "_meta" field to futureproof
 // TODO: Support ETags, If-Modified-Since, etc. (http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html)
-// TODO: PUT requests
 // TODO: Batch requests (https://cloud.google.com/storage/docs/json_api/v1/how-tos/batch)
 // TODO: Partial responses using ?fields= param (https://developers.google.com/+/api/#partial-responses)
 
@@ -59,7 +58,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if id == "" {
 		switch r.Method {
 		case "POST":
-			b, errCode = s.insert(kind, r.Body)
+			b, errCode = s.insert(kind, "", r.Body)
 			r.Body.Close()
 		case "GET", "HEAD":
 			uq, err := newUserQuery(r)
@@ -85,8 +84,10 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		case "DELETE":
 			errCode = s.delete2(kind, id)
 		case "POST":
-			// This is strictly "replace all properties/values", not "add new properties, update existing"
-			b, errCode = s.update(kind, id, r.Body)
+			b, errCode = s.replace(kind, id, r.Body)
+			r.Body.Close()
+		case "PUT":
+			b, errCode = s.insert(kind, id, r.Body)
 			r.Body.Close()
 		default:
 			http.Error(w, "Unsupported Method", http.StatusMethodNotAllowed)
@@ -191,23 +192,25 @@ func (s *Server) get(kind, id string) (out []byte, code int) {
 	return
 }
 
-func (s *Server) insert(kind string, r io.Reader) (out []byte, code int) {
+func (s *Server) insert(kind, id string, r io.Reader) (out []byte, code int) {
 	err := s.db.Update(func(tx *bolt.Tx) error {
 		b, err := tx.CreateBucketIfNotExists([]byte(kind))
 		if err != nil {
 			log.Printf("create bucket: %v", err)
 			return err
 		}
-		var k []byte
-		for {
-			u, err := uuid.NewV5(uuid.NamespaceURL, []byte("imjasonh.com"))
-			if err != nil {
-				log.Printf("uuid: %v", err)
-				return err
-			}
-			k = u[:]
-			if conflict := b.Get(k); conflict == nil {
-				break
+		if id == "" {
+			for {
+				u, err := uuid.NewV5(uuid.NamespaceURL, []byte("imjasonh.com"))
+				if err != nil {
+					log.Printf("uuid: %v", err)
+					return err
+				}
+				k := u[:]
+				if conflict := b.Get(k); conflict == nil {
+					id = string(k)
+					break
+				}
 			}
 		}
 		out, err = ioutil.ReadAll(r)
@@ -220,14 +223,14 @@ func (s *Server) insert(kind string, r io.Reader) (out []byte, code int) {
 			log.Printf("json: %v", err)
 			return err
 		}
-		m[idKey] = k
+		m[idKey] = id
 		m[createdKey] = nowFunc().Unix()
 		out, err = toJSON(m)
 		if err != nil {
 			log.Printf("json: %v", err)
 			return err
 		}
-		if err := b.Put(k, out); err != nil {
+		if err := b.Put([]byte(id), out); err != nil {
 			log.Printf("put: %v", err)
 			return err
 		}
@@ -257,7 +260,7 @@ func (s *Server) list(kind string, uq userQuery) (out []byte, code int) {
 	return
 }
 
-func (s *Server) update(kind, id string, r io.Reader) (out []byte, code int) {
+func (s *Server) replace(kind, id string, r io.Reader) (out []byte, code int) {
 	err := s.db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(kind))
 		if b == nil {
