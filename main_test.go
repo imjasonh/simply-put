@@ -84,7 +84,7 @@ func TestGetKindAndID(t *testing.T) {
 		} else if err != nil && !c.hasError {
 			t.Errorf("unexpected error %v", err)
 		} else if c.kind != kind || c.id != id {
-			t.Errorf("getKindAndID(%s); got %s,%d want %s,%s", c.path, kind, id, c.kind, c.id)
+			t.Errorf("getKindAndID(%s); got %s,%s want %s,%s", c.path, kind, id, c.kind, c.id)
 		}
 	}
 }
