@@ -210,25 +210,25 @@ func (s *Server) insert(kind string, r io.Reader) (out []byte, code int) {
 				break
 			}
 		}
-		all, err := ioutil.ReadAll(r)
+		out, err = ioutil.ReadAll(r)
 		if err != nil {
 			log.Printf("readall: %v", err)
 			return err
 		}
-		m, err := fromJSON(all)
+		m, err := fromJSON(out)
 		if err != nil {
 			log.Printf("json: %v", err)
 			return err
 		}
 		m[idKey] = k
 		m[createdKey] = nowFunc().Unix()
-		if err := b.Put(k, all); err != nil {
-			log.Printf("put: %v", err)
-			return err
-		}
 		out, err = toJSON(m)
 		if err != nil {
 			log.Printf("json: %v", err)
+			return err
+		}
+		if err := b.Put(k, out); err != nil {
+			log.Printf("put: %v", err)
 			return err
 		}
 		return nil
@@ -270,24 +270,34 @@ func (s *Server) update(kind, id string, r io.Reader) (out []byte, code int) {
 			code = http.StatusNotFound
 			return nil
 		}
-		all, err := ioutil.ReadAll(r)
+		old, err := fromJSON(v)
+		if err != nil {
+			log.Printf("json: %v", err)
+			return err
+		}
+		created := old[createdKey]
+
+		out, err = ioutil.ReadAll(r)
 		if err != nil {
 			log.Printf("readall: %v", err)
 			return err
 		}
-		m, err := fromJSON(all)
+		m, err := fromJSON(out)
 		if err != nil {
 			log.Printf("json: %v", err)
 			return err
 		}
+		// Make sure metadata is carried over intact
+		m[idKey] = id
+		m[createdKey] = created
 		m[updatedKey] = nowFunc().Unix()
-		if err := b.Put(k, all); err != nil {
-			log.Printf("put: %v", err)
-			return err
-		}
 		out, err = toJSON(m)
 		if err != nil {
 			log.Printf("json: %v", err)
+			return err
+		}
+		if err := b.Put(k, out); err != nil {
+			log.Printf("put: %v", err)
 			return err
 		}
 		return nil
