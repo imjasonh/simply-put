@@ -15,25 +15,29 @@ Then send HTTP requests to interact with data:
 
 **Create an object by sending a POST to `/<Kind>`**
 
-For all examples, the kind being used is `Data` but it could be anything, `User`, `Object`, `Vehicle`
+For all examples, the kind being used is `Data` but it could be anything, `User`, `Object`, `Kittens`, knock yourself out.
 
         $ curl http://localhost:8080/Data \
               -H "Content-Type: application/json" \
               -X POST \
-              -d '{"a":1,"b":false,"c":["ho",1,true]}' | python -m json.tool
+              -d '{"a":1,"b":false,"c":["foo",1,true]}' | python -m json.tool
         {
             "_created": 1386021382,
             "_id": <uuid>,
             "a": 1,
             "b": false,
             "c": [
-                "ho",
+                "foo",
                 1,
                 true
             ]
         }
 
-**Get an object by sending a GET to `/<Kind>/ID`**
+This responds with the same JSON you provided, plus two new keys: `"_id"` is the assigned ID of the new entity, and `"_created"` is the timestamp it was created.
+
+You can use the `<uuid>` to `GET` the data:
+
+**Get an object by sending a GET to `/<Kind>/<uuid>`**
 
         $ curl http://localhost:8080/Data/<uuid>
         {
@@ -42,7 +46,7 @@ For all examples, the kind being used is `Data` but it could be anything, `User`
             "a": 1,
             "b": false,
             "c": [
-                "ho",
+                "foo",
                 1,
                 true
             ]
@@ -53,7 +57,7 @@ For all examples, the kind being used is `Data` but it could be anything, `User`
         $ curl http://localhost:8080/Data/<uuid> \
               -H "Content-Type: application/json" \
               -X POST \
-              -d '{"a":3,"b":true,"c":["ho",1,true]}' | python -m json.tool
+              -d '{"a":3,"b":true,"c":["foo",1,true]}' | python -m json.tool
         {
             "_created": 1386021382,
             "_id": <uuid>,
@@ -61,11 +65,13 @@ For all examples, the kind being used is `Data` but it could be anything, `User`
             "a": 3,
             "b": true,
             "c": [
-                "ho",
+                "foo",
                 1,
                 true
             ]
         }
+
+Note that now the object has a new key, `"_updated"` which indicates that it has been updated, and when.
 
 **List objects by sending a GET to `/<Kind>` without the ID**
 
@@ -78,7 +84,7 @@ For all examples, the kind being used is `Data` but it could be anything, `User`
                     "a": 1,
                     "b": false,
                     "c": [
-                        "ho",
+                        "foo",
                         1,
                         true
                     ]
@@ -89,7 +95,7 @@ For all examples, the kind being used is `Data` but it could be anything, `User`
                     "a": 1,
                     "b": false,
                     "c": [
-                        "ho",
+                        "foo",
                         1,
                         true
                     ]
@@ -99,7 +105,7 @@ For all examples, the kind being used is `Data` but it could be anything, `User`
         }
 
 
-**Delete an object by sending a DELETE to `/<Kind>/ID`**
+**Delete an object by sending a DELETE to `/<Kind>/<uuid>`**
 
         $ curl http://localhost:8080/Data/<uuid> \
               -X DELETE

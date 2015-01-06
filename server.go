@@ -1,5 +1,6 @@
 package main
 
+// TODO: Handle partial update (PATCH) and don't overwrite _created if the update doesn't include it.
 // TODO: Add end-to-end tests with net/http/httptest
 // TODO: User POSTs a JSON schema, future requests are validated against that schema.
 //	- user also defines which indices they want on each type
@@ -7,7 +8,6 @@ package main
 // TODO: Move metadata into single top-level "_meta" field to futureproof
 // TODO: Support ETags, If-Modified-Since, etc. (http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html)
 // TODO: PUT requests
-// TODO: PATCH requests/semantics
 // TODO: Batch requests (https://cloud.google.com/storage/docs/json_api/v1/how-tos/batch)
 // TODO: Partial responses using ?fields= param (https://developers.google.com/+/api/#partial-responses)
 
