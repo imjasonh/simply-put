@@ -1,11 +1,11 @@
 package main
 
 import (
-	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"strconv"
@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/boltdb/bolt"
+	"github.com/nu7hatch/gouuid"
 )
 
 const (
@@ -57,12 +58,12 @@ func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var resp map[string]interface{}
+	var b []byte
 	errCode := http.StatusOK
-	if id == int64(0) {
+	if id == "" {
 		switch r.Method {
 		case "POST":
-			resp, errCode = s.insert(kind, r.Body)
+			b, errCode = s.insert(kind, r.Body)
 			r.Body.Close()
 		case "GET":
 			uq, err := newUserQuery(r)
@@ -70,7 +71,7 @@ func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, "Bad Request", http.StatusBadRequest)
 				return
 			}
-			resp, errCode = s.list(kind, *uq)
+			b, errCode = s.list(kind, *uq)
 		default:
 			http.Error(w, "Unsupported Method", http.StatusMethodNotAllowed)
 			return
@@ -78,12 +79,12 @@ func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	} else {
 		switch r.Method {
 		case "GET":
-			resp, errCode = s.get(kind, id)
+			b, errCode = s.get(kind, id)
 		case "DELETE":
 			errCode = s.delete2(kind, id)
 		case "POST":
 			// This is strictly "replace all properties/values", not "add new properties, update existing"
-			resp, errCode = s.update(kind, id, r.Body)
+			b, errCode = s.update(kind, id, r.Body)
 			r.Body.Close()
 		default:
 			http.Error(w, "Unsupported Method", http.StatusMethodNotAllowed)
@@ -94,33 +95,24 @@ func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "", errCode)
 		return
 	}
-	if resp != nil && len(resp) != 0 {
-		if err := json.NewEncoder(w).Encode(&resp); err != nil {
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-			return
-		}
-	}
 	w.Header().Add("Content-Type", "application/json")
+	w.Write(b)
 }
 
 // getKindAndID parses the kind and ID from a request path.
-func getKindAndID(path string) (string, int64, error) {
+func getKindAndID(path string) (string, string, error) {
 	if !strings.HasPrefix(path, "/") || path == "/" {
-		return "", int64(0), invalidPath
+		return "", "", invalidPath
 	}
 	parts := strings.Split(path[1:], "/")
 	if len(parts) > 2 {
-		return "", int64(0), invalidPath
+		return "", "", invalidPath
 	} else if len(parts) == 1 {
-		return parts[0], int64(0), nil
+		return parts[0], "", nil
 	} else if len(parts) == 2 {
-		id, err := strconv.ParseInt(parts[1], 10, 64)
-		if err != nil {
-			return "", int64(0), err
-		}
-		return parts[0], id, nil
+		return parts[0], parts[1], nil
 	}
-	return "", int64(0), invalidPath
+	return "", "", invalidPath
 }
 
 type filter struct {
@@ -156,54 +148,114 @@ func newUserQuery(r *http.Request) (*userQuery, error) {
 	return &uq, nil
 }
 
-func (s *server) delete2(kind string, id int64) int {
-	// TODO: implement
+func (s *server) delete2(kind, id string) int {
+	tx, err := s.db.Begin(true)
+	if err != nil {
+		log.Printf("begin tx: %v", err)
+		return http.StatusInternalServerError
+	}
+	b, err := tx.CreateBucketIfNotExists([]byte(kind))
+	if err != nil {
+		log.Printf("create bucket: %v", err)
+		return http.StatusInternalServerError
+	}
+	if err := b.Delete([]byte(id)); err != nil {
+		log.Printf("delete: %v", err)
+		return http.StatusInternalServerError
+	}
+	if err := tx.Commit(); err != nil {
+		log.Printf("commit delete: %v", err)
+		return http.StatusInternalServerError
+	}
 	return http.StatusOK
 }
 
-func (s *server) get(kind string, id int64) (map[string]interface{}, int) {
+func (s *server) get(kind, id string) ([]byte, int) {
+	tx, err := s.db.Begin(false)
+	if err != nil {
+		log.Printf("begin tx: %v", err)
+		return nil, http.StatusInternalServerError
+	}
+	b, err := tx.CreateBucketIfNotExists([]byte(kind))
+	if err != nil {
+		log.Printf("create bucket: %v", err)
+		return nil, http.StatusInternalServerError
+	}
+	v := b.Get([]byte(id))
+	return v, http.StatusOK
+}
+
+func (s *server) insert(kind string, r io.Reader) ([]byte, int) {
+	// TODO: add _created ?
+	tx, err := s.db.Begin(true)
+	if err != nil {
+		log.Printf("begin tx: %v", err)
+		return nil, http.StatusInternalServerError
+	}
+	b, err := tx.CreateBucketIfNotExists([]byte(kind))
+	if err != nil {
+		log.Printf("create bucket: %v", err)
+		return nil, http.StatusInternalServerError
+	}
+	var k []byte
+	for {
+		u, err := uuid.NewV5(uuid.NamespaceURL, []byte("imjasonh.com"))
+		if err != nil {
+			log.Printf("uuid: %v", err)
+			return nil, http.StatusInternalServerError
+		}
+		k = u[:]
+		if conflict := b.Get(k); conflict == nil {
+			break
+		}
+	}
+	all, err := ioutil.ReadAll(r)
+	if err != nil {
+		log.Printf("readall: %v", err)
+		return nil, http.StatusInternalServerError
+	}
+	if err := b.Put(k, all); err != nil {
+		log.Println("put: %v", err)
+		return nil, http.StatusInternalServerError
+	}
+	if err := tx.Commit(); err != nil {
+		log.Printf("commit put: %v", err)
+		return nil, http.StatusInternalServerError
+	}
+	return all, http.StatusOK
+}
+
+func (s *server) list(kind string, uq userQuery) ([]byte, int) {
+	tx, err := s.db.Begin(false)
+	if err != nil {
+		log.Printf("begin tx: %v", err)
+		return nil, http.StatusInternalServerError
+	}
+	b, err := tx.CreateBucketIfNotExists([]byte(kind))
+	if err != nil {
+		log.Printf("create bucket: %v", err)
+		return nil, http.StatusInternalServerError
+	}
+	_ = b.Cursor()
 	// TODO: implement
 	return nil, http.StatusOK
 }
 
-func (s *server) insert(kind string, r io.Reader) (map[string]interface{}, int) {
-	m, err := fromJSON(r)
+func (s *server) update(kind, id string, r io.Reader) ([]byte, int) {
+	tx, err := s.db.Begin(true)
 	if err != nil {
+		log.Printf("begin tx: %v", err)
 		return nil, http.StatusInternalServerError
 	}
-	m[createdKey] = nowFunc().Unix()
-
-	// TODO: implement
-	return m, http.StatusOK
-}
-
-func (s *server) list(kind string, uq userQuery) (map[string]interface{}, int) {
-	// TODO: implement
-	items := make([]map[string]interface{}, 0)
-	r := map[string]interface{}{
-		"items": items,
-	}
-	return r, http.StatusOK
-}
-
-func (s *server) update(kind string, id int64, r io.Reader) (map[string]interface{}, int) {
-	m, err := fromJSON(r)
+	b, err := tx.CreateBucketIfNotExists([]byte(kind))
 	if err != nil {
+		log.Printf("create bucket: %v", err)
 		return nil, http.StatusInternalServerError
 	}
-	delete(m, createdKey) // Ignore any _created value the user provides
-	delete(m, idKey)      // Ignore any _id value the user provides
-	m[updatedKey] = nowFunc().Unix()
-
-	// TODO: implement
-	return m, http.StatusOK
-}
-
-func fromJSON(r io.Reader) (map[string]interface{}, error) {
-	var m map[string]interface{}
-	err := json.NewDecoder(r).Decode(&m)
-	if err != nil {
-		fmt.Errorf("decoding json: %v", err)
+	if err := tx.Commit(); err != nil {
+		log.Printf("commit update: %v", err)
+		return nil, http.StatusInternalServerError
 	}
-	return m, err
+	// TODO: implement
+	return nil, http.StatusOK
 }
