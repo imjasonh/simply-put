@@ -252,10 +252,23 @@ func (s *server) update(kind, id string, r io.Reader) ([]byte, int) {
 		log.Printf("create bucket: %v", err)
 		return nil, http.StatusInternalServerError
 	}
+	k := []byte(id)
+	v := b.Get(k)
+	if v == nil {
+		return nil, http.StatusNotFound
+	}
+	all, err := ioutil.ReadAll(r)
+	if err != nil {
+		log.Printf("readall: %v", err)
+		return nil, http.StatusInternalServerError
+	}
+	if err := b.Put(k, all); err != nil {
+		log.Println("put: %v", err)
+		return nil, http.StatusInternalServerError
+	}
 	if err := tx.Commit(); err != nil {
 		log.Printf("commit update: %v", err)
 		return nil, http.StatusInternalServerError
 	}
-	// TODO: implement
 	return nil, http.StatusOK
 }
