@@ -154,10 +154,9 @@ func (s *server) delete2(kind, id string) int {
 		log.Printf("begin tx: %v", err)
 		return http.StatusInternalServerError
 	}
-	b, err := tx.CreateBucketIfNotExists([]byte(kind))
-	if err != nil {
-		log.Printf("create bucket: %v", err)
-		return http.StatusInternalServerError
+	b := tx.Bucket([]byte(kind))
+	if b == nil {
+		return http.StatusNotFound
 	}
 	if err := b.Delete([]byte(id)); err != nil {
 		log.Printf("delete: %v", err)
@@ -176,12 +175,18 @@ func (s *server) get(kind, id string) ([]byte, int) {
 		log.Printf("begin tx: %v", err)
 		return nil, http.StatusInternalServerError
 	}
-	b, err := tx.CreateBucketIfNotExists([]byte(kind))
-	if err != nil {
-		log.Printf("create bucket: %v", err)
-		return nil, http.StatusInternalServerError
+	b := tx.Bucket([]byte(kind))
+	if b == nil {
+		return nil, http.StatusNotFound
 	}
 	v := b.Get([]byte(id))
+	if v == nil {
+		return nil, http.StatusNotFound
+	}
+	if err := tx.Commit(); err != nil {
+		log.Printf("commit get: %v", err)
+		return nil, http.StatusInternalServerError
+	}
 	return v, http.StatusOK
 }
 
@@ -214,6 +219,7 @@ func (s *server) insert(kind string, r io.Reader) ([]byte, int) {
 		log.Printf("readall: %v", err)
 		return nil, http.StatusInternalServerError
 	}
+	// TODO: add _id to the JSON
 	if err := b.Put(k, all); err != nil {
 		log.Println("put: %v", err)
 		return nil, http.StatusInternalServerError
@@ -231,13 +237,16 @@ func (s *server) list(kind string, uq userQuery) ([]byte, int) {
 		log.Printf("begin tx: %v", err)
 		return nil, http.StatusInternalServerError
 	}
-	b, err := tx.CreateBucketIfNotExists([]byte(kind))
-	if err != nil {
-		log.Printf("create bucket: %v", err)
-		return nil, http.StatusInternalServerError
+	b := tx.Bucket([]byte(kind))
+	if b == nil {
+		return nil, http.StatusNotFound
 	}
 	_ = b.Cursor()
 	// TODO: implement
+	if err := tx.Commit(); err != nil {
+		log.Printf("commit delete: %v", err)
+		return nil, http.StatusInternalServerError
+	}
 	return nil, http.StatusOK
 }
 
@@ -247,10 +256,9 @@ func (s *server) update(kind, id string, r io.Reader) ([]byte, int) {
 		log.Printf("begin tx: %v", err)
 		return nil, http.StatusInternalServerError
 	}
-	b, err := tx.CreateBucketIfNotExists([]byte(kind))
-	if err != nil {
-		log.Printf("create bucket: %v", err)
-		return nil, http.StatusInternalServerError
+	b := tx.Bucket([]byte(kind))
+	if b == nil {
+		return nil, http.StatusNotFound
 	}
 	k := []byte(id)
 	v := b.Get(k)
