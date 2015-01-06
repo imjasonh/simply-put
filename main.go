@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -219,13 +221,24 @@ func (s *server) insert(kind string, r io.Reader) ([]byte, int) {
 		log.Printf("readall: %v", err)
 		return nil, http.StatusInternalServerError
 	}
-	// TODO: add _id to the JSON
+	m, err := fromJSON(all)
+	if err != nil {
+		log.Printf("json: %v", err)
+		return nil, http.StatusInternalServerError
+	}
+	m[idKey] = k
+	m[createdKey] = nowFunc().Unix()
 	if err := b.Put(k, all); err != nil {
 		log.Println("put: %v", err)
 		return nil, http.StatusInternalServerError
 	}
 	if err := tx.Commit(); err != nil {
 		log.Printf("commit put: %v", err)
+		return nil, http.StatusInternalServerError
+	}
+	all, err = toJSON(m)
+	if err != nil {
+		log.Printf("json: %v", err)
 		return nil, http.StatusInternalServerError
 	}
 	return all, http.StatusOK
@@ -270,6 +283,12 @@ func (s *server) update(kind, id string, r io.Reader) ([]byte, int) {
 		log.Printf("readall: %v", err)
 		return nil, http.StatusInternalServerError
 	}
+	m, err := fromJSON(all)
+	if err != nil {
+		log.Println("json: %v", err)
+		return nil, http.StatusInternalServerError
+	}
+	m[updatedKey] = nowFunc().Unix()
 	if err := b.Put(k, all); err != nil {
 		log.Println("put: %v", err)
 		return nil, http.StatusInternalServerError
@@ -278,5 +297,22 @@ func (s *server) update(kind, id string, r io.Reader) ([]byte, int) {
 		log.Printf("commit update: %v", err)
 		return nil, http.StatusInternalServerError
 	}
-	return nil, http.StatusOK
+	all, err = toJSON(m)
+	if err != nil {
+		log.Printf("json: %v", err)
+		return nil, http.StatusInternalServerError
+	}
+	return all, http.StatusOK
+}
+
+func fromJSON(b []byte) (map[string]interface{}, error) {
+	var m map[string]interface{}
+	err := json.NewDecoder(bytes.NewReader(b)).Decode(m)
+	return m, err
+}
+
+func toJSON(m map[string]interface{}) ([]byte, error) {
+	var buf bytes.Buffer
+	err := json.NewEncoder(&buf).Encode(m)
+	return buf.Bytes(), err
 }
