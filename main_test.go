@@ -14,7 +14,7 @@ func TestUserQuery(t *testing.T) {
 	}{{
 		// User didn't specify any params
 		http.Request{},
-		&userQuery{},
+		&userQuery{Limit: defaultLimit},
 		false,
 	}, {
 		// User requests all the params
@@ -59,7 +59,7 @@ func TestUserQuery(t *testing.T) {
 		} else if err != nil && !c.hasError {
 			t.Errorf("unexpected error %v", err)
 		} else if !reflect.DeepEqual(c.uq, a) {
-			t.Errorf("newUserQuery(%v); got %#v want %#v", c.r, a, c.uq)
+			t.Errorf("newUserQuery(%v);\n got %#v\nwant %#v", c.r, a, c.uq)
 		}
 	}
 }

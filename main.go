@@ -152,158 +152,150 @@ func newUserQuery(r *http.Request) (*userQuery, error) {
 }
 
 func (s *server) delete2(kind, id string) int {
-	tx, err := s.db.Begin(true)
+	code := http.StatusOK
+	err := s.db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(kind))
+		if b == nil {
+			code = http.StatusNotFound
+			return nil
+		}
+		if err := b.Delete([]byte(id)); err != nil {
+			log.Printf("delete: %v", err)
+			return err
+		}
+		return nil
+	})
 	if err != nil {
-		log.Printf("begin tx: %v", err)
 		return http.StatusInternalServerError
 	}
-	b := tx.Bucket([]byte(kind))
-	if b == nil {
-		return http.StatusNotFound
-	}
-	if err := b.Delete([]byte(id)); err != nil {
-		log.Printf("delete: %v", err)
-		return http.StatusInternalServerError
-	}
-	if err := tx.Commit(); err != nil {
-		log.Printf("commit delete: %v", err)
-		return http.StatusInternalServerError
-	}
-	return http.StatusOK
+	return code
 }
 
-func (s *server) get(kind, id string) ([]byte, int) {
-	tx, err := s.db.Begin(false)
+func (s *server) get(kind, id string) (out []byte, code int) {
+	err := s.db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(kind))
+		if b == nil {
+			code = http.StatusNotFound
+			return nil
+		}
+		out = b.Get([]byte(id))
+		if out == nil {
+			code = http.StatusNotFound
+			return nil
+		}
+		return nil
+	})
 	if err != nil {
-		log.Printf("begin tx: %v", err)
 		return nil, http.StatusInternalServerError
 	}
-	b := tx.Bucket([]byte(kind))
-	if b == nil {
-		return nil, http.StatusNotFound
-	}
-	v := b.Get([]byte(id))
-	if v == nil {
-		return nil, http.StatusNotFound
-	}
-	if err := tx.Commit(); err != nil {
-		log.Printf("commit get: %v", err)
-		return nil, http.StatusInternalServerError
-	}
-	return v, http.StatusOK
+	return
 }
 
-func (s *server) insert(kind string, r io.Reader) ([]byte, int) {
-	// TODO: add _created ?
-	tx, err := s.db.Begin(true)
-	if err != nil {
-		log.Printf("begin tx: %v", err)
-		return nil, http.StatusInternalServerError
-	}
-	b, err := tx.CreateBucketIfNotExists([]byte(kind))
-	if err != nil {
-		log.Printf("create bucket: %v", err)
-		return nil, http.StatusInternalServerError
-	}
-	var k []byte
-	for {
-		u, err := uuid.NewV5(uuid.NamespaceURL, []byte("imjasonh.com"))
+func (s *server) insert(kind string, r io.Reader) (out []byte, code int) {
+	err := s.db.Update(func(tx *bolt.Tx) error {
+		b, err := tx.CreateBucketIfNotExists([]byte(kind))
 		if err != nil {
-			log.Printf("uuid: %v", err)
-			return nil, http.StatusInternalServerError
+			log.Printf("create bucket: %v", err)
+			return err
 		}
-		k = u[:]
-		if conflict := b.Get(k); conflict == nil {
-			break
+		var k []byte
+		for {
+			u, err := uuid.NewV5(uuid.NamespaceURL, []byte("imjasonh.com"))
+			if err != nil {
+				log.Printf("uuid: %v", err)
+				return err
+			}
+			k = u[:]
+			if conflict := b.Get(k); conflict == nil {
+				break
+			}
 		}
-	}
-	all, err := ioutil.ReadAll(r)
+		all, err := ioutil.ReadAll(r)
+		if err != nil {
+			log.Printf("readall: %v", err)
+			return err
+		}
+		m, err := fromJSON(all)
+		if err != nil {
+			log.Printf("json: %v", err)
+			return err
+		}
+		m[idKey] = k
+		m[createdKey] = nowFunc().Unix()
+		if err := b.Put(k, all); err != nil {
+			log.Println("put: %v", err)
+			return err
+		}
+		out, err = toJSON(m)
+		if err != nil {
+			log.Printf("json: %v", err)
+			return err
+		}
+		return nil
+	})
 	if err != nil {
-		log.Printf("readall: %v", err)
 		return nil, http.StatusInternalServerError
 	}
-	m, err := fromJSON(all)
-	if err != nil {
-		log.Printf("json: %v", err)
-		return nil, http.StatusInternalServerError
-	}
-	m[idKey] = k
-	m[createdKey] = nowFunc().Unix()
-	if err := b.Put(k, all); err != nil {
-		log.Println("put: %v", err)
-		return nil, http.StatusInternalServerError
-	}
-	if err := tx.Commit(); err != nil {
-		log.Printf("commit put: %v", err)
-		return nil, http.StatusInternalServerError
-	}
-	all, err = toJSON(m)
-	if err != nil {
-		log.Printf("json: %v", err)
-		return nil, http.StatusInternalServerError
-	}
-	return all, http.StatusOK
+	return
 }
 
-func (s *server) list(kind string, uq userQuery) ([]byte, int) {
-	tx, err := s.db.Begin(false)
+func (s *server) list(kind string, uq userQuery) (out []byte, code int) {
+	code = http.StatusOK
+	err := s.db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(kind))
+		if b == nil {
+			code = http.StatusNotFound
+			return nil
+		}
+		_ = b.Cursor()
+		// TODO: implement
+		return nil
+	})
 	if err != nil {
-		log.Printf("begin tx: %v", err)
-		return nil, http.StatusInternalServerError
-	}
-	b := tx.Bucket([]byte(kind))
-	if b == nil {
 		return nil, http.StatusNotFound
 	}
-	_ = b.Cursor()
-	// TODO: implement
-	if err := tx.Commit(); err != nil {
-		log.Printf("commit delete: %v", err)
-		return nil, http.StatusInternalServerError
-	}
-	return nil, http.StatusOK
+	return
 }
 
-func (s *server) update(kind, id string, r io.Reader) ([]byte, int) {
-	tx, err := s.db.Begin(true)
+func (s *server) update(kind, id string, r io.Reader) (out []byte, code int) {
+	err := s.db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(kind))
+		if b == nil {
+			code = http.StatusNotFound
+			return nil
+		}
+		k := []byte(id)
+		v := b.Get(k)
+		if v == nil {
+			code = http.StatusNotFound
+			return nil
+		}
+		all, err := ioutil.ReadAll(r)
+		if err != nil {
+			log.Printf("readall: %v", err)
+			return err
+		}
+		m, err := fromJSON(all)
+		if err != nil {
+			log.Println("json: %v", err)
+			return err
+		}
+		m[updatedKey] = nowFunc().Unix()
+		if err := b.Put(k, all); err != nil {
+			log.Println("put: %v", err)
+			return err
+		}
+		out, err = toJSON(m)
+		if err != nil {
+			log.Printf("json: %v", err)
+			return err
+		}
+		return nil
+	})
 	if err != nil {
-		log.Printf("begin tx: %v", err)
 		return nil, http.StatusInternalServerError
 	}
-	b := tx.Bucket([]byte(kind))
-	if b == nil {
-		return nil, http.StatusNotFound
-	}
-	k := []byte(id)
-	v := b.Get(k)
-	if v == nil {
-		return nil, http.StatusNotFound
-	}
-	all, err := ioutil.ReadAll(r)
-	if err != nil {
-		log.Printf("readall: %v", err)
-		return nil, http.StatusInternalServerError
-	}
-	m, err := fromJSON(all)
-	if err != nil {
-		log.Println("json: %v", err)
-		return nil, http.StatusInternalServerError
-	}
-	m[updatedKey] = nowFunc().Unix()
-	if err := b.Put(k, all); err != nil {
-		log.Println("put: %v", err)
-		return nil, http.StatusInternalServerError
-	}
-	if err := tx.Commit(); err != nil {
-		log.Printf("commit update: %v", err)
-		return nil, http.StatusInternalServerError
-	}
-	all, err = toJSON(m)
-	if err != nil {
-		log.Printf("json: %v", err)
-		return nil, http.StatusInternalServerError
-	}
-	return all, http.StatusOK
+	return
 }
 
 func fromJSON(b []byte) (map[string]interface{}, error) {
