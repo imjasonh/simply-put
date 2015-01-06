@@ -35,6 +35,8 @@ For all examples, the kind being used is `Data` but it could be anything, `User`
 
 This responds with the same JSON you provided, plus two new keys: `"_id"` is the assigned ID of the new entity, and `"_created"` is the timestamp it was created.
 
+If you want to control the ID of the created item, you can specify it with a `PUT` request to `/<Kind>/<your-id>`
+
 You can use the `<uuid>` to `GET` the data:
 
 **Get an object by sending a GET to `/<Kind>/<uuid>`**
