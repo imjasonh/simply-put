@@ -1,23 +1,29 @@
-Simple REST JSON API for putting, getting, listing, querying, updating and deleting arbitrary data objects
+Simple REST JSON API built on BoltDB
 -----
 
 [![Build Status](https://travis-ci.org/ImJasonH/simply-put.svg)](https://travis-ci.org/ImJasonH/simply-put)
 
-First of all, you will need to get an OAuth access token for the scope `https://www.googleapis.com/auth/userinfo.email`
+First, run your server:
 
-You can do this using a client library, or for testing, by going to the OAuth Playground: https://developers.google.com/oauthplayground/
+```
+$ go run main.go server.go
+```
+
+By default this creates a file `bolt.db` that stores your data using [BoltDB](https://github.com/boltdb/bolt) -- you can change the location of this file with the `-db` flag.
+
+Then send HTTP requests to interact with data:
 
 **Create an object by sending a POST to `/<Kind>`**
 
-For all examples, the kind being used is `MyKindOfData`
+For all examples, the kind being used is `Data` but it could be anything, `User`, `Object`, `Vehicle`
 
-        $ curl https://simply-put.appspot.com/MyKindOfData?access_token=$ACCESS_TOKEN \
+        $ curl http://localhost:8080/Data \
               -H "Content-Type: application/json" \
               -X POST \
               -d '{"a":1,"b":false,"c":["ho",1,true]}' | python -m json.tool
         {
             "_created": 1386021382,
-            "_id": 1001,
+            "_id": <uuid>,
             "a": 1,
             "b": false,
             "c": [
@@ -29,10 +35,10 @@ For all examples, the kind being used is `MyKindOfData`
 
 **Get an object by sending a GET to `/<Kind>/ID`**
 
-        $ curl https://simply-put.appspot.com/MyKindOfData/1001?access_token=$ACCESS_TOKEN
+        $ curl http://localhost:8080/Data/<uuid>
         {
             "_created": 1386021382,
-            "_id": 1001,
+            "_id": <uuid>,
             "a": 1,
             "b": false,
             "c": [
@@ -44,13 +50,13 @@ For all examples, the kind being used is `MyKindOfData`
 
 **Update an object by sending a POST to `/<Kind>/ID`**
 
-        $ curl https://simply-put.appspot.com/MyKindOfData/1001?access_token=$ACCESS_TOKEN \
+        $ curl http://localhost:8080/Data/<uuid> \
               -H "Content-Type: application/json" \
               -X POST \
               -d '{"a":3,"b":true,"c":["ho",1,true]}' | python -m json.tool
         {
             "_created": 1386021382,
-            "_id": 1001,
+            "_id": <uuid>,
             "_updated": 1386021425,
             "a": 3,
             "b": true,
@@ -63,12 +69,12 @@ For all examples, the kind being used is `MyKindOfData`
 
 **List objects by sending a GET to `/<Kind>` without the ID**
 
-        $ curl https://simply-put.appspot.com/MyKindOfData?access_token=$ACCESS_TOKEN | python -m json.tool
+        $ curl http://localhost:8080/Data | python -m json.tool
         {
             "items": [
                 {
                     "_created": 1386021382,
-                    "_id": 1,
+                    "_id": <uuid>,
                     "a": 1,
                     "b": false,
                     "c": [
@@ -79,7 +85,7 @@ For all examples, the kind being used is `MyKindOfData`
                 },
                 {
                     "_created": 1386021382,
-                    "_id": 1001,
+                    "_id": <uuid>,
                     "a": 1,
                     "b": false,
                     "c": [
@@ -95,7 +101,7 @@ For all examples, the kind being used is `MyKindOfData`
 
 **Delete an object by sending a DELETE to `/<Kind>/ID`**
 
-        $ curl https://simply-put.appspot.com/MyKindOfData/1001?access_token=$ACCESS_TOKEN \
+        $ curl http://localhost:8080/Data/<uuid> \
               -X DELETE
         (There is no response in this case)
 
@@ -105,7 +111,7 @@ For all examples, the kind being used is `MyKindOfData`
 License
 -----
 
-    Copyright 2014 Jason Hall
+    Copyright 2015 Jason Hall
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
